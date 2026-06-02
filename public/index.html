@@ -353,9 +353,14 @@ function fmtDate(s) {
   if(!s) return '';
   return new Date(s).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
 }
-function fmtTime(s) {
-  if(!s||!s.includes('T')) return '';
-  return new Date(s).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:true});
+function fmtTime(m) {
+  // 시간 필드 우선 사용
+  if(m.시간) return m.시간.trim();
+  // fallback: 날짜 필드에 T가 포함된 경우
+  if(m.날짜&&m.날짜.includes('T')) {
+    return new Date(m.날짜).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:true});
+  }
+  return '';
 }
 function getMember(m) {
   if(m.멤버) return m.멤버;
@@ -437,6 +442,7 @@ function renderChat(msgs) {
     const color = MCOLOR[member]||'#aaa';
     const badge = (m.종류&&m.종류!=='텍스트') ? '<span class="badge '+m.종류+'">'+m.종류+'</span>' : '';
     const memo  = m.메모 ? '<div class="msg-memo">📝 '+esc(m.메모)+'</div>' : '';
+    const timeStr = fmtTime(m);
     const row=document.createElement('div');
     row.className='msg-row';
     row.innerHTML=
@@ -444,7 +450,7 @@ function renderChat(msgs) {
       '<div class="bwrap">'+
         '<div class="sname" style="color:'+color+'">'+esc(displayName)+'</div>'+
         '<div class="bubble">'+content+'</div>'+
-        '<div class="msg-meta">'+badge+'<span class="msg-time">'+fmtTime(m.날짜)+'</span></div>'+
+        '<div class="msg-meta">'+badge+(timeStr?'<span class="msg-time">'+timeStr+'</span>':'')+'</div>'+
         memo+
       '</div>';
     frag.appendChild(row);
@@ -504,7 +510,7 @@ function openModal(m) {
   document.getElementById('modal-content').innerHTML=m.종류==='영상'
     ?'<video controls src="'+esc(m.미디어_URL)+'" style="max-width:100%;max-height:75vh;border-radius:10px"></video>'
     :'<img src="'+esc(m.미디어_URL)+'" style="max-width:100%;max-height:75vh;border-radius:10px">';
-  document.getElementById('modal-info').textContent=getDisplayName(m)+' · '+fmtDate(m.날짜)+' '+fmtTime(m.날짜);
+  document.getElementById('modal-info').textContent=getDisplayName(m)+' · '+fmtDate(m.날짜)+(fmtTime(m)?' '+fmtTime(m):'');
   document.getElementById('media-modal').classList.add('open');
 }
 function closeModal() {
