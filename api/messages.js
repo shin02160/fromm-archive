@@ -13,10 +13,7 @@ export default async function handler(req, res) {
   try {
     do {
       const body = {
-        sorts: [
-          { property: '날짜', direction: 'ascending' },
-          { timestamp: 'created_time', direction: 'ascending' }
-        ],
+        sorts: [{ property: '날짜', direction: 'ascending' }],
         page_size: 100,
         ...(cursor ? { start_cursor: cursor } : {})
       };
@@ -47,36 +44,39 @@ export default async function handler(req, res) {
       return '';
     }
 
-    const messages = results.map(p => {
+    // 시간 텍스트 → 분 단위 숫자 변환 (정렬용)
+    function timeToMinutes(t) {
+      if (!t) return -1;
+      t = t.trim();
+      const pm = t.match(/오후\s*(\d{1,2}):(\d{2})/);
+      const am = t.match(/오전\s*(\d{1,2}):(\d{2})/);
+      const plain = t.match(/^(\d{1,2}):(\d{2})$/);
+      if (pm) { let h = parseInt(pm[1]); if (h < 12) h += 12; return h * 60 + parseInt(pm[2]); }
+      if (am) { let h = parseInt(am[1]); if (h === 12) h = 0; return h * 60 + parseInt(am[2]); }
+      if (plain) return parseInt(plain[1]) * 60 + parseInt(plain[2]);
+      return -1;
+    }
+
+    const messages = results.map((p, idx) => {
       const props = p.properties;
-      const 보낸사람 = rt(props['보낸사람']?.rich_text);
-      const 시간     = rt(props['시간']?.rich_text);
-      const 멤버raw  = props['멤버']?.select?.name || '';
-      const 날짜raw  = props['날짜']?.date?.start || '';
+      const 보낸사람  = rt(props['보낸사람']?.rich_text);
+      const 시간      = rt(props['시간']?.rich_text);
+      const 멤버raw   = props['멤버']?.select?.name || '';
+      const 날짜raw   = props['날짜']?.date?.start || '';
+      const createdAt = p.created_time || '';
 
       // 날짜 + 시간 합쳐서 datetime 구성
       let datetime = 날짜raw;
       if (날짜raw && 시간 && !날짜raw.includes('T')) {
-        // 시간 파싱: "오후 09:11" 또는 "21:11" 형태 모두 처리
-        let t = 시간.trim();
-        const pmMatch = t.match(/오후\s*(\d{1,2}):(\d{2})/);
-        const amMatch = t.match(/오전\s*(\d{1,2}):(\d{2})/);
-        const plainMatch = t.match(/^(\d{1,2}):(\d{2})$/);
-        if (pmMatch) {
-          let h = parseInt(pmMatch[1]); if (h < 12) h += 12;
-          datetime = `${날짜raw}T${String(h).padStart(2,'0')}:${pmMatch[2]}:00+09:00`;
-        } else if (amMatch) {
-          let h = parseInt(amMatch[1]); if (h === 12) h = 0;
-          datetime = `${날짜raw}T${String(h).padStart(2,'0')}:${amMatch[2]}:00+09:00`;
-        } else if (plainMatch) {
-          datetime = `${날짜raw}T${plainMatch[1].padStart(2,'0')}:${plainMatch[2]}:00+09:00`;
+        const mins = timeToMinutes(시간);
+        if (mins >= 0) {
+          const h = Math.floor(mins / 60), m = mins % 60;
+          datetime = `${날짜raw}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+09:00`;
         }
       }
 
       const 미디어_URL = props['미디어_URL']?.url || '';
       const 종류raw    = props['종류']?.select?.name || '';
-
-      // 종류 미입력 시 URL 확장자로 자동 감지
       let 종류 = 종류raw;
       if (!종류 && 미디어_URL) {
         const ext = 미디어_URL.split('?')[0].split('.').pop().toLowerCase();
@@ -87,6 +87,9 @@ export default async function handler(req, res) {
 
       return {
         id: p.id,
+        _idx: idx,              // Notion API 반환 순서 보존용
+        _timeMin: timeToMinutes(시간), // 시간 정렬용 숫자
+        _createdAt: createdAt,
         내용: rt(props['내용']?.title),
         날짜: datetime,
         날짜raw,
@@ -97,7 +100,14 @@ export default async function handler(req, res) {
         미디어_URL,
         메모: rt(props['메모']?.rich_text),
       };
-    }).filter(m => m.날짜raw); // 날짜 없는 항목만 제외
+    }).filter(m => m.날짜raw);
+
+    // 정렬: 1차 날짜, 2차 시간(분), 3차 Notion 행 순서(_idx)
+    messages.sort((a, b) => {
+      if (a.날짜raw !== b.날짜raw) return a.날짜raw.localeCompare(b.날짜raw);
+      if (a._timeMin !== b._timeMin) return a._timeMin - b._timeMin;
+      return a._idx - b._idx;
+    });
 
     res.status(200).json({ messages, total: messages.length });
   } catch (e) {
