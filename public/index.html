@@ -433,7 +433,9 @@ function renderChat(msgs) {
       content='<img src="'+esc(m.미디어_URL)+'" alt="사진" loading="lazy">';
       if(m.내용) content+='<div style="margin-top:6px">'+esc(m.내용)+'</div>';
     } else if(m.종류==='음성'&&m.미디어_URL) {
-      content='<audio controls src="'+esc(m.미디어_URL)+'" style="height:28px;max-width:200px;margin-top:4px"></audio>';
+      const ext=(m.미디어_URL.split('?')[0].split('.').pop()||'').toLowerCase();
+      const atype=ext==='mp3'?'audio/mpeg':ext==='m4a'?'audio/mp4':ext==='ogg'?'audio/ogg':ext==='wav'?'audio/wav':'audio/mp4';
+      content='<audio controls style="height:32px;max-width:220px;margin-top:4px"><source src="'+esc(m.미디어_URL)+'" type="'+atype+'"></audio>';
     } else if(m.종류==='영상'&&m.미디어_URL) {
       content='<video controls src="'+esc(m.미디어_URL)+'" style="max-width:100%;border-radius:10px"></video>';
     } else {
@@ -487,7 +489,7 @@ function renderMedia() {
         '<div class="av" style="width:38px;height:38px;flex-shrink:0">'+getAvatar(member)+'</div>'+
         '<div style="flex:1;min-width:0">'+
           '<div style="font-size:12px;color:'+(MCOLOR[member]||'#aaa')+';margin-bottom:4px">'+esc(getDisplayName(m))+' · '+fmtDate(m.날짜)+'</div>'+
-          '<audio controls src="'+esc(m.미디어_URL)+'" style="width:100%;height:28px"></audio>'+
+          (function(){var ext=(m.미디어_URL.split('?')[0].split('.').pop()||'').toLowerCase();var at=ext==='mp3'?'audio/mpeg':ext==='m4a'?'audio/mp4':ext==='ogg'?'audio/ogg':ext==='wav'?'audio/wav':'audio/mp4';return '<audio controls style="width:100%;height:32px"><source src="'+esc(m.미디어_URL)+'" type="'+at+'"></audio>';})()+'
         '</div></div>';
     }).join('');
     return;
