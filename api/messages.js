@@ -13,7 +13,10 @@ export default async function handler(req, res) {
   try {
     do {
       const body = {
-        sorts: [{ property: '날짜', direction: 'ascending' }],
+        sorts: [
+          { property: '날짜', direction: 'ascending' },
+          { property: '순번', direction: 'ascending' }
+        ],
         page_size: 100,
         ...(cursor ? { start_cursor: cursor } : {})
       };
@@ -87,13 +90,13 @@ export default async function handler(req, res) {
 
       return {
         id: p.id,
-        _idx: idx,              // Notion API 반환 순서 보존용
-        _timeMin: timeToMinutes(시간), // 시간 정렬용 숫자
-        _createdAt: createdAt,
+        _idx: idx,
+        _timeMin: timeToMinutes(시간),
         내용: rt(props['내용']?.title),
         날짜: datetime,
         날짜raw,
         시간,
+        순번: props['순번']?.number ?? null,
         멤버: mapMember(보낸사람, 멤버raw),
         보낸사람,
         종류: 종류 || '텍스트',
@@ -102,9 +105,15 @@ export default async function handler(req, res) {
       };
     }).filter(m => m.날짜raw);
 
-    // 정렬: 1차 날짜, 2차 시간(분), 3차 Notion 행 순서(_idx)
+    // 정렬: 1차 날짜, 2차 순번(있으면), 3차 시간, 4차 _idx
     messages.sort((a, b) => {
       if (a.날짜raw !== b.날짜raw) return a.날짜raw.localeCompare(b.날짜raw);
+      // 둘 다 순번 있으면 순번 우선
+      if (a.순번 !== null && b.순번 !== null) return a.순번 - b.순번;
+      // 순번 있는 쪽 우선
+      if (a.순번 !== null) return -1;
+      if (b.순번 !== null) return 1;
+      // 둘 다 순번 없으면 시간 → _idx
       if (a._timeMin !== b._timeMin) return a._timeMin - b._timeMin;
       return a._idx - b._idx;
     });
