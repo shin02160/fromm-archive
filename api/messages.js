@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       const body = {
         sorts: [
           { property: '날짜', direction: 'ascending' },
-          { property: '시간', direction: 'ascending' }
+          { timestamp: 'created_time', direction: 'ascending' }
         ],
         page_size: 100,
         ...(cursor ? { start_cursor: cursor } : {})
@@ -73,6 +73,18 @@ export default async function handler(req, res) {
         }
       }
 
+      const 미디어_URL = props['미디어_URL']?.url || '';
+      const 종류raw    = props['종류']?.select?.name || '';
+
+      // 종류 미입력 시 URL 확장자로 자동 감지
+      let 종류 = 종류raw;
+      if (!종류 && 미디어_URL) {
+        const ext = 미디어_URL.split('?')[0].split('.').pop().toLowerCase();
+        if (['jpg','jpeg','png','gif','webp'].includes(ext)) 종류 = '사진';
+        else if (['mp4','mov','webm'].includes(ext)) 종류 = '영상';
+        else if (['mp3','m4a','wav','ogg','aac'].includes(ext)) 종류 = '음성';
+      }
+
       return {
         id: p.id,
         내용: rt(props['내용']?.title),
@@ -81,8 +93,8 @@ export default async function handler(req, res) {
         시간,
         멤버: mapMember(보낸사람, 멤버raw),
         보낸사람,
-        종류: props['종류']?.select?.name || '텍스트',
-        미디어_URL: props['미디어_URL']?.url || '',
+        종류: 종류 || '텍스트',
+        미디어_URL,
         메모: rt(props['메모']?.rich_text),
       };
     }).filter(m => m.날짜raw); // 날짜 없는 항목만 제외
