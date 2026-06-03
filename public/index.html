@@ -93,7 +93,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .chat-tab[data-tab='동성'].active{border-bottom-color:var(--accent-ds);}
 .chat-filter{display:flex;gap:6px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--border);flex-shrink:0;}
 .fi{background:var(--fill-alpha);border:1px solid var(--border);border-radius:999px;color:var(--text);font-family:var(--font);font-size:12px;padding:6px 12px;outline:none;transition:border-color .15s;}
-select.fi{-webkit-appearance:none!important;-moz-appearance:none!important;appearance:none!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;padding-right:30px!important;cursor:pointer;}
+.csel{display:flex;align-items:center;gap:6px;padding:6px 12px;user-select:none;}
+.csel-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;overflow:hidden;max-height:200px;overflow-y:auto;}
+.csel-item{padding:10px 14px;font-size:13px;cursor:pointer;color:var(--text);}
+.csel-item:hover,.csel-item.selected{background:var(--fill-alpha);color:var(--accent-sh-strong,#3a96ff);}
 .fi:focus{border-color:var(--accent-sh);}
 #search{flex:1;min-width:0;}
 .date-fi{flex:0 0 112px;border-radius:8px;}
@@ -248,8 +251,16 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
       </div>
     </div>
     <div id="month-filter" style="display:none;gap:6px;padding:0 14px 6px;flex-shrink:0;align-items:center;">
-      <select id="filter-year" class="fi" style="flex:1;appearance:auto;cursor:pointer;" onchange="onDropFilter()"><option value="">년도</option></select>
-      <select id="filter-month" class="fi" style="flex:1;appearance:auto;cursor:pointer;" onchange="onDropFilter()"><option value="">월</option></select>
+      <div class="fi csel" id="filter-year-wrap" style="flex:1;position:relative;cursor:pointer;" onclick="toggleCsel(this)">
+        <span id="filter-year-label" style="flex:1">년도</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+        <div id="filter-year-list" class="csel-list" style="display:none;"></div>
+      </div>
+      <div class="fi csel" id="filter-month-wrap" style="flex:1;position:relative;cursor:pointer;" onclick="toggleCsel(this)">
+        <span id="filter-month-label" style="flex:1">월</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+        <div id="filter-month-list" class="csel-list" style="display:none;"></div>
+      </div>
     </div>
     <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
       <div id="chat-area" style="flex:1;overflow-y:auto;"><div class="status-box"><div class="spin"></div><div>불러오는 중...</div></div></div>
@@ -403,7 +414,7 @@ function clearFilters(){
   document.getElementById('date-to').value='';
   document.getElementById('clear-btn').classList.remove('show');
   applyFilters();
-;var fy=document.getElementById('filter-year');if(fy)fy.value='';var fm=document.getElementById('filter-month');if(fm)fm.value='';}
+;_cselYear='';_cselMonth='';var yl=document.getElementById('filter-year-label');if(yl)yl.textContent='년도';var ml=document.getElementById('filter-month-label');if(ml)ml.textContent='월';}
 function applyFilters(){
   var q=document.getElementById('search').value.trim().toLowerCase();
   var from=document.getElementById('date-from').value;
@@ -451,24 +462,44 @@ function toggleVoice(el){
   }
 }
 function fmtAudioTime(s){var m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec;}
+var _cselYear='',_cselMonth='';
 function buildMonthFilter(){
   var years=new Set(),months=new Set();
   allMsgs.forEach(function(m){var d=m['날짜'];if(d&&d.length>=7){years.add(d.slice(0,4));months.add(d.slice(5,7));}});
-  var ySel=document.getElementById('filter-year'),mSel=document.getElementById('filter-month');
-  if(!ySel)return;
-  ySel.innerHTML='<option value="">년도</option>';
-  Array.from(years).sort().forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y+'년';ySel.appendChild(o);});
-  mSel.innerHTML='<option value="">월</option>';
-  Array.from(months).sort().forEach(function(mo){var o=document.createElement('option');o.value=mo;o.textContent=parseInt(mo)+'월';mSel.appendChild(o);});
+  var yList=document.getElementById('filter-year-list'),mList=document.getElementById('filter-month-list');
+  if(!yList)return;
+  function makeItems(list,items,labelFn,onSelect){
+    list.innerHTML='<div class="csel-item" data-v="">전체</div>';
+    items.forEach(function(v){var d=document.createElement('div');d.className='csel-item';d.dataset.v=v;d.textContent=labelFn(v);d.onclick=function(e){e.stopPropagation();onSelect(v,d.textContent);list.style.display='none';};list.appendChild(d);});
+  }
+  makeItems(yList,Array.from(years).sort(),function(y){return y+'년';},function(v,label){
+    _cselYear=v;document.getElementById('filter-year-label').textContent=label||'년도';
+    yList.querySelectorAll('.csel-item').forEach(function(x){x.classList.toggle('selected',x.dataset.v===v);});
+    onDropFilter();
+  });
+  makeItems(mList,Array.from(months).sort(),function(m){return parseInt(m)+'월';},function(v,label){
+    _cselMonth=v;document.getElementById('filter-month-label').textContent=label||'월';
+    mList.querySelectorAll('.csel-item').forEach(function(x){x.classList.toggle('selected',x.dataset.v===v);});
+    onDropFilter();
+  });
+  // "전체" item click for year
+  yList.firstChild.onclick=function(e){e.stopPropagation();_cselYear='';document.getElementById('filter-year-label').textContent='년도';yList.querySelectorAll('.csel-item').forEach(function(x){x.classList.remove('selected');});yList.style.display='none';onDropFilter();};
+  mList.firstChild.onclick=function(e){e.stopPropagation();_cselMonth='';document.getElementById('filter-month-label').textContent='월';mList.querySelectorAll('.csel-item').forEach(function(x){x.classList.remove('selected');});mList.style.display='none';onDropFilter();};
 }
+function toggleCsel(wrap){
+  var list=wrap.querySelector('.csel-list');
+  var wasHidden=list.style.display==='none';
+  document.querySelectorAll('.csel-list').forEach(function(l){l.style.display='none';});
+  list.style.display=wasHidden?'block':'none';
+}
+document.addEventListener('click',function(){document.querySelectorAll('.csel-list').forEach(function(l){l.style.display='none';});});
 function toggleMonthFilter(){
   var mf=document.getElementById('month-filter');
   var visible=mf.style.display==='flex';
   mf.style.display=visible?'none':'flex';
 }
 function onDropFilter(){
-  var y=document.getElementById('filter-year').value;
-  var m=document.getElementById('filter-month').value;
+  var y=_cselYear,m=_cselMonth;
   if(y||m){
     var fromY=y||'2000',fromM=m||'01',toY=y||'2099',toM=m||'12';
     var from=fromY+'-'+fromM+'-01';
