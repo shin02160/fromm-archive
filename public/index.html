@@ -350,15 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('sh-heart').textContent = '+' + calcDays('2015-05-20');
   document.getElementById('ds-heart').textContent = '+' + calcDays('2020-01-01');
   // 보낸사람 이름을 노션 데이터 로드 후 업데이트
-  window._updateFriendNames = function(msgs) {
-    var shName = '', dsName = '';
-    msgs.forEach(function(m) {
-      if(!shName && m.멤버==='승협' && m.보낸사람) shName = m.보낸사람;
-      if(!dsName && m.멤버==='동성' && m.보낸사람) dsName = m.보낸사람;
-    });
-    if(shName) document.getElementById('sh-fname').textContent = shName;
-    if(dsName) document.getElementById('ds-fname').textContent = dsName;
-  };
+  // 친구 이름은 이지곰/동성이로 고정
 });
 
 const d0  = s => s ? s.slice(0,10) : '';
@@ -614,7 +606,6 @@ document.getElementById('bg-file').onchange=function(e) {
     if(!r.ok) throw new Error('API '+r.status);
     const data=await r.json();
     allMsgs=data.messages.slice().sort(function(a,b){ return a.날짜.localeCompare(b.날짜); });
-    if(window._updateFriendNames) window._updateFriendNames(allMsgs);
     renderChat(allMsgs);
     renderMedia();
   } catch(e) {
