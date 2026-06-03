@@ -93,7 +93,7 @@ export default async function handler(req, res) {
         id: p.id,
         _idx: idx,
         _timeMin: timeToMinutes(시간),
-        내용: rt(props['내용']?.title),
+        내용: rt(props['메시지']?.rich_text),
         날짜: datetime,
         날짜raw,
         시간,
