@@ -27,12 +27,13 @@ html,body{height:100%;background:var(--bg);overflow:hidden;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;width:var(--app-w);height:100%;margin:0 auto;position:relative;overflow:hidden;-webkit-font-smoothing:antialiased;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--fill-alpha-2);border-radius:99px;}
 #pages{flex:1;overflow:hidden;position:relative;min-height:0;}
+#page-chat{overflow:hidden;}
 .page{position:absolute;inset:0;overflow-y:auto;display:none;flex-direction:column;padding-bottom:calc(var(--tab-h) + var(--safe-b));}
 .page.active{display:flex;}
 .page-header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:16px 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .page-title{font-size:22px;font-weight:700;letter-spacing:-.5px;}
 /* thread header — shown when a specific member tab is active */
-.thread-head{display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(255,255,255,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);z-index:50;flex-shrink:0;position:sticky;top:0;}
+.thread-head{display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);z-index:50;flex-shrink:0;}
 .thread-head .th-ava{width:38px;height:38px;border-radius:999px;flex:none;overflow:hidden;box-shadow:var(--shadow-sm);}
 .thread-head .th-ava img{width:100%;height:100%;object-fit:cover;}
 .th-meta{flex:1;min-width:0;}
@@ -85,11 +86,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .friend-status{font-size:13px;color:var(--text-neutral);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;}
 .friend-heart{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--red);flex-shrink:0;}
 .friend-divider{display:none;}
-.chat-tabs{display:flex;border-bottom:1px solid var(--border);background:rgba(255,255,255,.97);backdrop-filter:blur(12px);position:sticky;top:57px;z-index:40;flex-shrink:0;}
+.chat-tabs{display:flex;border-bottom:1px solid var(--border);background:rgba(255,255,255,.97);backdrop-filter:blur(12px);flex-shrink:0;}
 .chat-tab{flex:1;padding:13px 0;text-align:center;font-size:14px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
 .chat-tab.active{color:var(--text);border-bottom-color:var(--accent-sh);font-weight:700;}
 .chat-tab[data-tab='동성'].active{border-bottom-color:var(--accent-ds);}
-.chat-filter{display:flex;gap:6px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.95);border-bottom:1px solid var(--border);position:sticky;top:106px;z-index:39;flex-shrink:0;}
+.chat-filter{display:flex;gap:6px;align-items:center;padding:8px 10px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--border);flex-shrink:0;}
 .fi{background:var(--fill-alpha);border:1px solid var(--border);border-radius:999px;color:var(--text);font-family:var(--font);font-size:12px;padding:6px 12px;outline:none;transition:border-color .15s;}
 .fi:focus{border-color:var(--accent-sh);}
 #search{flex:1;min-width:0;}
@@ -98,7 +99,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 #msg-count{font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;}
 .clear-btn{background:none;border:none;color:var(--text-muted);font-size:15px;cursor:pointer;padding:0 2px;flex-shrink:0;opacity:0;pointer-events:none;transition:opacity .15s;line-height:1;}
 .clear-btn.show{opacity:1;pointer-events:auto;}
-#chat-area{flex:1;padding:8px 0;}
+#chat-area{flex:1;overflow-y:auto;padding:8px 0;}
 .date-div{display:flex;align-items:center;margin:18px 14px 12px;gap:10px;}
 .date-div::before,.date-div::after{content:'';flex:1;height:1px;background:var(--border);}
 .date-div span{font-size:11px;font-weight:600;color:var(--text-sub);background:rgba(255,255,255,.9);padding:3px 10px;border-radius:20px;border:1px solid var(--border);white-space:nowrap;}
@@ -164,7 +165,6 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .tab-icon svg{width:24px;height:24px;stroke:var(--text-tertiary);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:all .15s;}
 .month-chip{flex-shrink:0;border:none;border-radius:999px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;background:var(--fill-alpha,#f0f0f5);color:var(--text-secondary);transition:background .15s,color .15s;}
 .month-chip.active{background:var(--accent-sh-strong,#3a96ff);color:#fff;}
-#month-filter::-webkit-scrollbar{display:none;}
 .tab-label{font-size:10px;color:var(--text-tertiary);font-weight:600;letter-spacing:.01em;}
 .tab-item.active .tab-icon svg{stroke:var(--text-strong);}
 .tab-item.active .tab-label{color:var(--text-strong);font-weight:700;}
@@ -219,7 +219,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
   </div>
   <!-- 채팅 -->
   <div class="page" id="page-chat">
-    <div class="page-header" id="chat-generic-header"><div class="page-title">채팅</div></div>
+    <div class="page-header" id="chat-generic-header"><div class="page-title">Message</div></div>
     <div class="thread-head" id="chat-thread-head" style="display:none;">
       <div class="th-ava" id="th-ava"></div>
       <div class="th-meta">
@@ -254,7 +254,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
   <button id="scroll-btn" onclick="scrollToLatest()" style="display:none;position:fixed;bottom:calc(var(--tab-h,58px) + var(--safe-b,0px) + 14px);right:18px;z-index:200;border:none;background:var(--accent-sh-strong,#3a96ff);color:#fff;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;">↓ 최신</button>
   <!-- 미디어 -->
   <div class="page" id="page-media">
-    <div class="page-header"><div class="page-title">미디어</div></div>
+    <div class="page-header"><div class="page-title">Media</div></div>
     <div class="media-tabs">
       <div class="media-tab active" data-mt="all"   onclick="setMediaTab(this,'all')">전체</div>
       <div class="media-tab"        data-mt="photo" onclick="setMediaTab(this,'photo')">사진</div>
@@ -340,8 +340,8 @@ function getAvatar(member){if(member==='승협')return '<img src="'+SH_PROFILE+'
 // 프롬친구 일수 (Fromm 가입일 기준)
 (function(){
   var joined=new Date('2015-05-20');
-  var chatPage=document.getElementById('page-chat');
-  if(chatPage)chatPage.addEventListener('scroll',function(){updateScrollBtn();}); // 승협 Fromm 시작일
+  var chatArea=document.getElementById('chat-area');
+  if(chatArea)chatArea.addEventListener('scroll',function(){updateScrollBtn();});
   var days=Math.floor((Date.now()-joined.getTime())/(1000*60*60*24));
   var el=document.getElementById('fromm-days');
   if(el)el.textContent=days;
@@ -387,12 +387,7 @@ function updateChatHeader(m){
   thAva.style.background='';
   if(isSH){thAva.style.background='linear-gradient(140deg,#93c5fd,#6eb5ff)';}
   else{thAva.style.background='linear-gradient(140deg,#fcd380,#ffb347)';}
-  // update sticky tops for chat-tabs and chat-filter
-  var tabs=document.querySelector('.chat-tabs');
-  var filter=document.querySelector('.chat-filter');
-  var headH=m==='all'?57:72;
-  tabs.style.top=headH+'px';
-  if(filter)filter.style.top=(headH+46)+'px';
+
 }
 function updateClearBtn(){
   var has=document.getElementById('search').value||document.getElementById('date-from').value||document.getElementById('date-to').value;
@@ -463,10 +458,8 @@ function buildMonthFilter(){
 }
 function toggleMonthFilter(){
   var mf=document.getElementById('month-filter');
-  var dr=document.getElementById('date-row');
   var visible=mf.style.display==='flex';
   mf.style.display=visible?'none':'flex';
-  if(dr)dr.style.display=visible?'flex':'none';
 }
 function onDropFilter(){
   var y=document.getElementById('filter-year').value;
@@ -485,15 +478,15 @@ function onDropFilter(){
   applyFilters();updateClearBtn();
 }
 function scrollToLatest(){
-  var page=document.getElementById('page-chat');
-  page.scrollTop=page.scrollHeight;
+  var area=document.getElementById('chat-area');
+  area.scrollTop=area.scrollHeight;
   document.getElementById('scroll-btn').style.display='none';
 }
 function updateScrollBtn(){
-  var page=document.getElementById('page-chat');
+  var area=document.getElementById('chat-area');
   var btn=document.getElementById('scroll-btn');
   if(!btn)return;
-  var distFromBottom=page.scrollHeight-page.scrollTop-page.clientHeight;
+  var distFromBottom=area.scrollHeight-area.scrollTop-area.clientHeight;
   btn.style.display=distFromBottom>200?'block':'none';
 }
 function renderChat(msgs){
@@ -519,8 +512,8 @@ function renderChat(msgs){
   });
   area.innerHTML='';area.appendChild(frag);
   // scroll to latest + show/hide scroll button
-  var page=document.getElementById('page-chat');
-  page.scrollTop=page.scrollHeight;
+  var area=document.getElementById('chat-area');
+  area.scrollTop=area.scrollHeight;
   updateScrollBtn();
 }
 function setMediaTab(el,t){document.querySelectorAll('.media-tab').forEach(function(x){x.classList.remove('active');});el.classList.add('active');mediaTab=t;renderMedia();}
