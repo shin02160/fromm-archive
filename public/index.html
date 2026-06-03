@@ -303,7 +303,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);}
 <!-- 탭바 -->
 <div id="tabbar">
   <div class="tab-item active" data-page="list"  onclick="goPage('list')">
-    <div class="tab-icon">⭐</div><div class="tab-label">목록</div>
+    <div class="tab-icon">⭐</div><div class="tab-label">N.Flying</div>
   </div>
   <div class="tab-item" data-page="chat"  onclick="goPage('chat')">
     <div class="tab-icon">💬</div><div class="tab-label">채팅</div>
@@ -378,8 +378,9 @@ function fmtTime(m) {
 }
 function getMember(m) {
   if(m.멤버) return m.멤버;
-  if(m.보낸사람==='이지곰') return '승협';
+  // 보낸사람 기반 폴백: 동성이는 닉변 없음, 나머지는 승협으로 처리
   if(m.보낸사람==='동성이') return '동성';
+  if(m.보낸사람) return '승협';
   return '';
 }
 function getDisplayName(m) { return m.보낸사람 || m.멤버 || '?'; }
@@ -523,10 +524,15 @@ function renderMedia() {
       html+='<div style="font-size:11px;color:var(--text-muted);padding:10px 14px 6px">사진 · 영상 ('+visual.length+')</div>';
       html+='<div class="media-grid">';
       visual.forEach(function(m){
+        var mAll=getMember(m);
+        var oAll='<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.55));padding:4px 5px 3px;display:flex;align-items:center;gap:4px">'+
+          '<div style="width:18px;height:18px;border-radius:50%;overflow:hidden;flex-shrink:0">'+getAvatar(mAll)+'</div>'+
+          '<span style="font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(getDisplayName(m))+'</span>'+
+          '</div>';
         var thumb=m.종류==='영상'
-          ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div class="media-type-icon">▶️</div>'
-          :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover">';
-        html+='<div class="media-cell" onclick="openModal('+JSON.stringify({id:m.id,종류:m.종류,미디어_URL:m.미디어_URL,날짜:m.날짜,시간:m.시간,보낸사람:m.보낸사람,멤버:m.멤버})+')">'+thumb+'</div>';
+          ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div class="media-type-icon">▶️</div>'+oAll
+          :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover">'+oAll;
+        html+='<div class="media-cell" style="position:relative" onclick="openModal('+JSON.stringify({id:m.id,종류:m.종류,미디어_URL:m.미디어_URL,날짜:m.날짜,시간:m.시간,보낸사람:m.보낸사람,멤버:m.멤버})+')">'+thumb+'</div>';
       });
       html+='</div>';
     }
@@ -561,9 +567,15 @@ function renderMedia() {
   filtered.forEach(function(m) {
     const cell=document.createElement('div');
     cell.className='media-cell';
+    var member2=getMember(m);
+    var overlay='<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.55));padding:4px 5px 3px;display:flex;align-items:center;gap:4px">'+
+      '<div style="width:18px;height:18px;border-radius:50%;overflow:hidden;flex-shrink:0">'+getAvatar(member2)+'</div>'+
+      '<span style="font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(getDisplayName(m))+'</span>'+
+      '</div>';
+    cell.style.position='relative';
     cell.innerHTML=type==='영상'
-      ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline></video><div class="media-type-icon">▶️</div>'
-      :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="">';
+      ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline></video><div class="media-type-icon">▶️</div>'+overlay
+      :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="">'+overlay;
     cell.onclick=function() { openModal(m); };
     grid.appendChild(cell);
   });
