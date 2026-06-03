@@ -1,8 +1,3 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/api/messages", "dest": "/api/messages.js" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/public/index.html" }
-  ]
+  "version": 2
 }
