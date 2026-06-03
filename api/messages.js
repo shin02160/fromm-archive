@@ -42,8 +42,9 @@ export default async function handler(req, res) {
 
     function mapMember(sender, member) {
       if (member) return member;
-      if (sender === '이지곰') return '승협';
+      // 동성이는 닉변 없음, 나머지 보낸사람은 승협으로 처리
       if (sender === '동성이') return '동성';
+      if (sender) return '승협';
       return '';
     }
 
