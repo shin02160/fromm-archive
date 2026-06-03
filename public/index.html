@@ -544,7 +544,7 @@ document.getElementById('bg-file').onchange=function(e) {
 };
 (async function() {
   try {
-    const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'}});
+    const r=await fetch('/api/messages.js',{method:'POST',headers:{'Content-Type':'application/json'}});
     if(!r.ok) throw new Error('API '+r.status);
     const data=await r.json();
     allMsgs=data.messages.slice().sort(function(a,b){ return a.날짜.localeCompare(b.날짜); });
