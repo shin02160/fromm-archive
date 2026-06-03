@@ -488,98 +488,96 @@ function setMediaMember(el,m) {
   mediaMember=m; renderMedia();
 }
 function renderMedia() {
-  const typeMap={photo:'사진',video:'영상',voice:'음성'};
-  const type=mediaTab==='all'?'all':typeMap[mediaTab];
-  const filtered=allMsgs.filter(function(m) {
-    const member=getMember(m);
+  var typeMap={photo:'사진',video:'영상',voice:'음성'};
+  var type=mediaTab==='all'?'all':typeMap[mediaTab];
+  var filtered=allMsgs.filter(function(m) {
+    var member=getMember(m);
     if(mediaMember!=='all'&&member!==mediaMember) return false;
     if(type==='all') return (m.종류==='사진'||m.종류==='영상'||m.종류==='음성')&&m.미디어_URL;
     return m.종류===type&&m.미디어_URL;
   });
-  const area=document.getElementById('media-content');
+  var area=document.getElementById('media-content');
   if(!filtered.length) {
-    const label=type==='all'?'미디어':type;
-    area.innerHTML='<div class="media-empty"><div style="font-size:32px">'+(type==='음성'?'🎵':type==='영상'?'🎬':'📷')+'</div><div style="font-size:13px">'+label+' 미디어가 없어요</div></div>';
+    var label=type==='all'?'미디어':type;
+    var icon=type==='음성'?'🎵':type==='영상'?'🎬':'📷';
+    area.innerHTML='<div class="media-empty"><div style="font-size:32px">'+icon+'</div><div style="font-size:13px">'+label+' 미디어가 없어요</div></div>';
     return;
   }
-  if(type==='음성') {
-    area.innerHTML=filtered.map(function(m) {
-      const member=getMember(m);
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">'+
-        '<div class="av" style="width:38px;height:38px;flex-shrink:0">'+getAvatar(member)+'</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:12px;color:'+(MCOLOR[member]||'#aaa')+';margin-bottom:4px">'+esc(getDisplayName(m))+' · '+fmtDate(m.날짜)+'</div>'+
-          (function(){var ext=(m.미디어_URL.split('?')[0].split('.').pop()||'').toLowerCase();var at=ext==='mp3'?'audio/mpeg':ext==='m4a'?'audio/mp4':ext==='ogg'?'audio/ogg':ext==='wav'?'audio/wav':'audio/mp4';return '<audio controls style="width:100%;height:32px"><source src="'+esc(m.미디어_URL)+'" type="'+at+'"></audio>';})()+
-        '</div></div>';
-    }).join('');
-    return;
+
+  // 공통 리스트 행 생성 함수 (사진/영상/음성 모두 동일 형태)
+  function makeRow(m, frag) {
+    var member=getMember(m);
+    var color=MCOLOR[member]||'#aaa';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)';
+    // 아바타
+    var av=document.createElement('div');
+    av.className='av';
+    av.style.cssText='width:38px;height:38px;flex-shrink:0';
+    av.innerHTML=getAvatar(member);
+    // 우측 콘텐츠
+    var right=document.createElement('div');
+    right.style.cssText='flex:1;min-width:0';
+    // 이름 + 날짜
+    var meta=document.createElement('div');
+    meta.style.cssText='font-size:12px;color:'+color+';margin-bottom:6px';
+    meta.textContent=getDisplayName(m)+' · '+fmtDate(m.날짜)+(fmtTime(m)?' '+fmtTime(m):'');
+    right.appendChild(meta);
+    // 미디어 콘텐츠
+    if(m.종류==='사진') {
+      var img=document.createElement('img');
+      img.src=esc(m.미디어_URL);
+      img.alt='사진';
+      img.loading='lazy';
+      img.style.cssText='max-width:100%;max-height:200px;border-radius:8px;display:block;cursor:pointer';
+      img.onclick=function(){openModal(m);};
+      right.appendChild(img);
+    } else if(m.종류==='영상') {
+      var vid=document.createElement('video');
+      vid.src=esc(m.미디어_URL);
+      vid.controls=true;
+      vid.style.cssText='max-width:100%;max-height:200px;border-radius:8px;display:block';
+      right.appendChild(vid);
+    } else if(m.종류==='음성') {
+      var ext=(m.미디어_URL.split('?')[0].split('.').pop()||'').toLowerCase();
+      var at=ext==='mp3'?'audio/mpeg':ext==='m4a'?'audio/mp4':ext==='ogg'?'audio/ogg':ext==='wav'?'audio/wav':'audio/mp4';
+      var aud=document.createElement('audio');
+      aud.controls=true;
+      aud.style.cssText='width:100%;height:32px';
+      var src=document.createElement('source');
+      src.src=esc(m.미디어_URL);
+      src.type=at;
+      aud.appendChild(src);
+      right.appendChild(aud);
+    }
+    row.appendChild(av);
+    row.appendChild(right);
+    frag.appendChild(row);
   }
-  // 전체 탭: 사진/영상은 그리드, 음성은 리스트로 섞어서 표시
+
+  var frag=document.createDocumentFragment();
+
   if(type==='all') {
-    var html='';
-    // 날짜순으로 그룹화하지 않고 순서대로: 사진/영상 → 3열 그리드 덩어리, 음성 → 리스트 행
-    var visual=filtered.filter(function(m){return m.종류==='사진'||m.종류==='영상';});
-    var audio=filtered.filter(function(m){return m.종류==='음성';});
-    if(visual.length) {
-      html+='<div style="font-size:11px;color:var(--text-muted);padding:10px 14px 6px">사진 · 영상 ('+visual.length+')</div>';
-      html+='<div class="media-grid">';
-      visual.forEach(function(m){
-        var mAll=getMember(m);
-        var oAll='<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.55));padding:4px 5px 3px;display:flex;align-items:center;gap:4px">'+
-          '<div style="width:18px;height:18px;border-radius:50%;overflow:hidden;flex-shrink:0">'+getAvatar(mAll)+'</div>'+
-          '<span style="font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(getDisplayName(m))+'</span>'+
-          '</div>';
-        var thumb=m.종류==='영상'
-          ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div class="media-type-icon">▶️</div>'+oAll
-          :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover">'+oAll;
-        html+='<div class="media-cell" style="position:relative" onclick="openModal('+JSON.stringify({id:m.id,종류:m.종류,미디어_URL:m.미디어_URL,날짜:m.날짜,시간:m.시간,보낸사람:m.보낸사람,멤버:m.멤버})+')">'+thumb+'</div>';
-      });
-      html+='</div>';
+    var photos=filtered.filter(function(m){return m.종류==='사진';});
+    var videos=filtered.filter(function(m){return m.종류==='영상';});
+    var audios=filtered.filter(function(m){return m.종류==='음성';});
+    function addSection(list, label, icon) {
+      if(!list.length) return;
+      var hdr=document.createElement('div');
+      hdr.style.cssText='font-size:11px;color:var(--text-muted);padding:10px 14px 4px;font-weight:600';
+      hdr.textContent=icon+' '+label+' ('+list.length+')';
+      frag.appendChild(hdr);
+      list.forEach(function(m){makeRow(m,frag);});
     }
-    if(audio.length) {
-      html+='<div style="font-size:11px;color:var(--text-muted);padding:10px 14px 6px">음성 ('+audio.length+')</div>';
-      html+=audio.map(function(m){
-        var member=getMember(m);
-        var ext=(m.미디어_URL.split('?')[0].split('.').pop()||'').toLowerCase();
-        var at=ext==='mp3'?'audio/mpeg':ext==='m4a'?'audio/mp4':ext==='ogg'?'audio/ogg':ext==='wav'?'audio/wav':'audio/mp4';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">'+
-          '<div class="av" style="width:38px;height:38px;flex-shrink:0">'+getAvatar(member)+'</div>'+
-          '<div style="flex:1;min-width:0">'+
-            '<div style="font-size:12px;color:'+(MCOLOR[member]||'#aaa')+';margin-bottom:4px">'+esc(getDisplayName(m))+' · '+fmtDate(m.날짜)+'</div>'+
-            '<audio controls style="width:100%;height:32px"><source src="'+esc(m.미디어_URL)+'" type="'+at+'"></audio>'+
-          '</div></div>';
-      }).join('');
-    }
-    area.innerHTML=html;
-    // onclick을 문자열로 넘겼으므로 cell들에 이벤트 재연결
-    area.querySelectorAll('.media-cell').forEach(function(cell){
-      var raw=cell.getAttribute('onclick');
-      if(raw){
-        var m=JSON.parse(raw.replace("openModal(","").replace(")",""));
-        cell.removeAttribute('onclick');
-        cell.onclick=function(){openModal(m);};
-      }
-    });
-    return;
+    addSection(photos,'사진','📷');
+    addSection(videos,'영상','🎬');
+    addSection(audios,'음성','🎵');
+  } else {
+    filtered.forEach(function(m){makeRow(m,frag);});
   }
-  const grid=document.createElement('div');
-  grid.className='media-grid';
-  filtered.forEach(function(m) {
-    const cell=document.createElement('div');
-    cell.className='media-cell';
-    var member2=getMember(m);
-    var overlay='<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.55));padding:4px 5px 3px;display:flex;align-items:center;gap:4px">'+
-      '<div style="width:18px;height:18px;border-radius:50%;overflow:hidden;flex-shrink:0">'+getAvatar(member2)+'</div>'+
-      '<span style="font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(getDisplayName(m))+'</span>'+
-      '</div>';
-    cell.style.position='relative';
-    cell.innerHTML=type==='영상'
-      ?'<video src="'+esc(m.미디어_URL)+'" muted playsinline></video><div class="media-type-icon">▶️</div>'+overlay
-      :'<img src="'+esc(m.미디어_URL)+'" loading="lazy" alt="">'+overlay;
-    cell.onclick=function() { openModal(m); };
-    grid.appendChild(cell);
-  });
-  area.innerHTML=''; area.appendChild(grid);
+
+  area.innerHTML='';
+  area.appendChild(frag);
 }
 function openModal(m) {
   const member=getMember(m);
