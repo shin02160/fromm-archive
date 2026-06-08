@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://cuarcwzthhdzmarjgyax.supabase.co';
 const TABLE = 'Fromm_NF';
+const PAGE_SIZE = 1000; // Supabase 기본 최대값
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,23 +14,42 @@ export default async function handler(req, res) {
   const headers = {
     'apikey': key,
     'Authorization': `Bearer ${key}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Prefer': 'count=exact'
   };
 
   try {
-    const [r, rEmoji] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=*&limit=10000&order=${encodeURIComponent('날짜.asc,순번.asc')}`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/fromm_emoji?select=keyword,image_url`, { headers })
-    ]);
+    // 이모티콘 맵 병렬 조회
+    const rEmojiPromise = fetch(`${SUPABASE_URL}/rest/v1/fromm_emoji?select=keyword,image_url`, {
+      headers: { ...headers, 'Prefer': '' }
+    });
 
-    if (!r.ok) {
-      const err = await r.text();
-      return res.status(r.status).json({ error: err });
+    // 페이지네이션으로 전체 메시지 조회 (1000개씩)
+    let allRows = [];
+    let offset = 0;
+
+    while (true) {
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/${TABLE}?select=*&order=${encodeURIComponent('날짜.asc,순번.asc')}&limit=${PAGE_SIZE}&offset=${offset}`,
+        { headers }
+      );
+
+      if (!r.ok) {
+        const err = await r.text();
+        return res.status(r.status).json({ error: err });
+      }
+
+      const rows = await r.json();
+      allRows = allRows.concat(rows);
+
+      // 가져온 행이 PAGE_SIZE보다 적으면 마지막 페이지
+      if (rows.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
 
-    const rows = await r.json();
-
+    // 이모티콘 맵
     const emojiMap = {};
+    const rEmoji = await rEmojiPromise;
     if (rEmoji.ok) {
       const emojiRows = await rEmoji.json();
       if (Array.isArray(emojiRows)) {
@@ -56,7 +76,7 @@ export default async function handler(req, res) {
       return '';
     }
 
-    const messages = rows.map((row, idx) => {
+    const messages = allRows.map((row, idx) => {
       const 날짜raw = (row['날짜'] || '').replace(/\//g, '-');
       const 시간    = row['시간'] || '';
       const 보낸사람 = row['보낸사람'] || '';
@@ -97,6 +117,7 @@ export default async function handler(req, res) {
       };
     }).filter(m => m.날짜raw);
 
+    // 정렬: 1차 날짜, 2차 순번, 3차 시간, 4차 _idx
     messages.sort((a, b) => {
       if (a.날짜raw !== b.날짜raw) return a.날짜raw.localeCompare(b.날짜raw);
       if (a.순번 !== null && b.순번 !== null) return a.순번 - b.순번;
