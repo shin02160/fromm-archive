@@ -214,8 +214,12 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .dl-dot{width:10px;height:10px;border-radius:3px;flex:none;}
 .dl-name{font-size:13px;font-weight:600;color:var(--text-secondary);flex:1;}
 .dl-bar-wrap{width:60px;height:5px;background:var(--fill-alpha);border-radius:99px;overflow:hidden;}
-.dl-bar-fill{height:100%;border-radius:99px;}
+.dl-bar-fill{height:100%;border-radius:99px;transition:width .6s ease;}
 .dl-pct{font-size:11px;color:var(--text-tertiary);width:28px;text-align:right;}
+@keyframes donut-in{from{stroke-dashoffset:var(--dash-from);}to{stroke-dashoffset:var(--dash-to);}}
+.donut-arc{transition:opacity .15s;}
+.donut-arc:hover{opacity:.8;cursor:pointer;}
+.donut-center-label{pointer-events:none;}
 .heat-outer{overflow-x:auto;padding-bottom:4px;}
 .heat-outer::-webkit-scrollbar{height:0;}
 .heat-grid{display:flex;gap:2px;}
@@ -238,6 +242,23 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .kw-bar-wrap{flex:1;height:6px;background:var(--fill-alpha);border-radius:99px;overflow:hidden;}
 .kw-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#8ec5ff,#6eb5ff);}
 .kw-num{font-size:12px;font-weight:700;color:var(--text-neutral);width:32px;text-align:right;flex:none;}
+.kw-exclude-btn{width:18px;height:18px;border-radius:99px;border:none;background:var(--fill-alpha-2);color:var(--text-tertiary);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s;}
+.kw-exclude-btn:hover{background:#ff4d6a22;color:#ff4d6a;}
+/* 키워드 필터 헤더 */
+.kw-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
+.kw-chips{display:flex;gap:6px;}
+.kw-chip{font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;border:1.5px solid var(--line);background:transparent;color:var(--text-secondary);cursor:pointer;transition:all .15s;}
+.kw-chip.active{background:var(--accent-sh);border-color:var(--accent-sh);color:#fff;}
+.kw-chip.ds.active{background:#ffb347;border-color:#ffb347;color:#fff;}
+/* 제외 단어 섹션 */
+.kw-exclude-area{margin-bottom:10px;}
+.kw-exclude-input-row{display:flex;gap:6px;margin-bottom:8px;}
+.kw-exclude-input{flex:1;font-size:13px;font-family:var(--font);padding:7px 12px;border-radius:99px;border:1.5px solid var(--line);background:var(--fill-alpha);color:var(--text-strong);outline:none;}
+.kw-exclude-input:focus{border-color:var(--accent-sh);}
+.kw-exclude-add{padding:7px 14px;border-radius:99px;border:none;background:var(--accent-sh);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.kw-excluded-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.kw-excl-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:#ff4d6a18;border:1px solid #ff4d6a33;font-size:12px;font-weight:600;color:#ff4d6a;}
+.kw-excl-chip button{background:none;border:none;color:#ff4d6a;cursor:pointer;font-size:11px;line-height:1;padding:0;}
 #heat-tip{display:none;position:fixed;background:#1f2430;color:#fff;border-radius:9px;padding:6px 11px;font-size:11.5px;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.3);}
 </style>
 </head>
@@ -371,7 +392,13 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
       <div class="dash-block">
         <div class="dash-btitle">멤버 비율</div>
         <div class="donut-wrap">
-          <svg class="donut-svg" id="dash-donut" viewBox="0 0 110 110"></svg>
+          <div style="position:relative;width:110px;height:110px;flex:none;">
+            <svg class="donut-svg" id="dash-donut" viewBox="0 0 110 110" style="width:110px;height:110px;"></svg>
+            <div id="dash-donut-tip" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transition:opacity .2s;">
+              <div id="dash-donut-tip-val" style="font-size:17px;font-weight:800;letter-spacing:-.03em;color:var(--text-strong);line-height:1.1;"></div>
+              <div id="dash-donut-tip-lbl" style="font-size:10px;color:var(--text-tertiary);margin-top:2px;"></div>
+            </div>
+          </div>
           <div class="donut-legend">
             <div class="dl-row">
               <div class="dl-dot" style="background:#6eb5ff;"></div>
@@ -396,7 +423,21 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
       </div>
       <!-- 키워드 분석 -->
       <div class="dash-block">
-        <div class="dash-btitle">자주 쓴 단어</div>
+        <div class="kw-header">
+          <div class="dash-btitle" style="margin-bottom:0;">자주 쓴 단어</div>
+          <div class="kw-chips">
+            <button class="kw-chip active" data-kw-member="전체" onclick="setKwMember(this,'전체')">전체</button>
+            <button class="kw-chip" data-kw-member="승협" onclick="setKwMember(this,'승협')">승협</button>
+            <button class="kw-chip ds" data-kw-member="동성" onclick="setKwMember(this,'동성')">동성</button>
+          </div>
+        </div>
+        <div class="kw-exclude-area" style="margin-top:10px;">
+          <div class="kw-exclude-input-row">
+            <input class="kw-exclude-input" id="kw-exclude-input" type="text" placeholder="제외할 단어 입력..." onkeydown="if(event.key==='Enter')addKwExclude()">
+            <button class="kw-exclude-add" onclick="addKwExclude()">제외</button>
+          </div>
+          <div class="kw-excluded-chips" id="kw-excluded-chips"></div>
+        </div>
         <div id="dash-kw"></div>
       </div>
       <!-- 최근 메시지 -->
@@ -648,6 +689,80 @@ function applyMfFilter(){
 
 
 
+// ── 키워드 상태 ─────────────────────────────────────────────
+var kwMember='전체';
+var customExcludeWords=(function(){
+  try{var s=localStorage.getItem('fromm_kw_exclude');return new Set(s?JSON.parse(s):[]);}
+  catch(e){return new Set();}
+})();
+function saveExcludeWords(){
+  try{localStorage.setItem('fromm_kw_exclude',JSON.stringify(Array.from(customExcludeWords)));}catch(e){}
+}
+function setKwMember(btn,member){
+  kwMember=member;
+  document.querySelectorAll('.kw-chip').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderKeywords();
+}
+function addKwExclude(){
+  var input=document.getElementById('kw-exclude-input');
+  var word=(input.value||'').trim();
+  if(!word)return;
+  customExcludeWords.add(word);
+  saveExcludeWords();
+  input.value='';
+  renderKwExcludedChips();
+  renderKeywords();
+}
+function removeKwExclude(word){
+  customExcludeWords.delete(word);
+  saveExcludeWords();
+  renderKwExcludedChips();
+  renderKeywords();
+}
+function renderKwExcludedChips(){
+  var el=document.getElementById('kw-excluded-chips');
+  if(!el)return;
+  if(customExcludeWords.size===0){el.innerHTML='';return;}
+  el.innerHTML=Array.from(customExcludeWords).map(function(w){
+    return '<span class="kw-excl-chip">'+esc(w)+'<button onclick="removeKwExclude(\''+esc(w).replace(/'/g,"\\'")+'\')" title="제외 해제">✕</button></span>';
+  }).join('');
+}
+function renderKeywords(){
+  if(!allMsgs.length)return;
+  var targetMsgs=allMsgs;
+  if(kwMember!=='전체')targetMsgs=allMsgs.filter(function(m){return m['멤버']===kwMember;});
+  var barColor=kwMember==='동성'?'linear-gradient(90deg,#fcd380,#ffb347)':'linear-gradient(90deg,#8ec5ff,#6eb5ff)';
+  var stopWords=new Set(['이','가','을','를','은','는','에','에서','에게','로','으로','와','과','의','도','만','부터','까지','나','너','저','그','것','거','수','있','없','하','되','아','어','제','우리','내','네','더','잘','다','또','좀','뭐','이제','그냥','진짜','정말','너무','완전','엄청','되게','거기','여기','저기','오늘','내일','어제','때','거야','이야','해요','해서','했어','했는데','있어','없어','같아','같은','있는','없는','하는','되는','해야','해도','해서','한다','하면','했다','해줘','해줘서','해줘야','ㅋ','ㅎ','ㅠ','ㅜ','요','들','서','고','게','든','든지','처럼','보다','한테','까','야','아','어','구','는데','이랑','랑','이나','나']);
+  customExcludeWords.forEach(function(w){stopWords.add(w);});
+  var wordCount={};
+  targetMsgs.forEach(function(m){
+    if(m['종류']!=='텍스트')return;
+    var text=(m['내용']||'').replace(/[^가-힣ㄱ-ㆎ a-zA-Z0-9]/g,' ');
+    text.split(/\s+/).forEach(function(w){
+      w=w.trim();
+      if(w.length<2)return;
+      if(stopWords.has(w))return;
+      if(/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(w))return;
+      wordCount[w]=(wordCount[w]||0)+1;
+    });
+  });
+  var topWords=Object.keys(wordCount).sort(function(a,b){return wordCount[b]-wordCount[a];}).slice(0,15);
+  var maxW=topWords.length?wordCount[topWords[0]]:1;
+  var kwHtml=topWords.map(function(w,i){
+    var cnt=wordCount[w];
+    var pct=Math.round(cnt/maxW*100);
+    return '<div class="kw-row">'+
+      '<div class="kw-rank">'+(i+1)+'</div>'+
+      '<div class="kw-word">'+esc(w)+'</div>'+
+      '<div class="kw-bar-wrap"><div class="kw-bar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+
+      '<div class="kw-num">'+cnt+'</div>'+
+      '<button class="kw-exclude-btn" title="제외" onclick="(function(){customExcludeWords.add(\''+esc(w).replace(/'/g,"\\'")+'\');saveExcludeWords();renderKwExcludedChips();renderKeywords();})()">✕</button>'+
+    '</div>';
+  }).join('');
+  document.getElementById('dash-kw').innerHTML=kwHtml||'<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">분석할 텍스트가 없어요</div>';
+}
+// ── renderDash ────────────────────────────────────────────────
 function renderDash(){
   if(!allMsgs.length)return;
   var msgs=allMsgs;
@@ -678,8 +793,6 @@ function renderDash(){
   var barsHtml=mkeys.map(function(k){
     var v=monthly[k];var tot=v.sh+v.ds;
     var hPct=maxM?Math.round(tot/maxM*100):0;
-    var shH=tot?Math.round(v.sh/tot*100):0;
-    var dsH=100-shH;
     var lbl=k.slice(5).replace(/^0/,'')+'월';
     return '<div class="mbc"><div class="mbs" style="height:'+hPct+'%">'+
       '<div class="bar-sh" style="flex:'+v.sh+';min-height:'+(v.sh?'2px':'0')+'"></div>'+
@@ -687,24 +800,57 @@ function renderDash(){
       '</div><div class="mbl">'+lbl+'</div></div>';
   }).join('');
   document.getElementById('dash-monthly').innerHTML=barsHtml;
-  // 도넛 SVG
-  var R=45,cx=55,cy=55,sw=18;
+  // 도넛 SVG — 버그 수정 + 애니메이션 + 호버 툴팁
+  var R=45,cx=55,cy=55,sw=16;
   var circ=2*Math.PI*R;
   var shArc=total?circ*sh/total:0;
   var dsArc=total?circ*ds/total:0;
-  var offset=circ/4;
-  document.getElementById('dash-donut').innerHTML=
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--fill-alpha-2)" stroke-width="'+sw+'"/>'+
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="#6eb5ff" stroke-width="'+sw+'"'+
-    ' stroke-dasharray="'+shArc+' '+(circ-shArc)+'" transform="rotate(-90 '+cx+' '+cy+')"'+
-    ' stroke-dashoffset="-'+(circ-offset)+'"/>'+
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="#ffb347" stroke-width="'+sw+'"'+
-    ' stroke-dasharray="'+dsArc+' '+(circ-dsArc)+'" transform="rotate(-90 '+cx+' '+cy+')"'+
-    ' stroke-dashoffset="-'+(circ-offset-shArc)+'"/>'+
-    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="17" font-weight="800" fill="var(--text-strong)">'+total+'</text>'+
-    '<text x="'+cx+'" y="'+(cy+11)+'" text-anchor="middle" font-size="10" fill="var(--text-tertiary)">총 메시지</text>';
   var shPct=total?Math.round(sh/total*100):0;
   var dsPct=total?Math.round(ds/total*100):0;
+  // 올바른 dashoffset: rotate(-90)로 12시 시작, segment2는 -shArc 오프셋
+  var svg=document.getElementById('dash-donut');
+  svg.innerHTML=
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--fill-alpha-2)" stroke-width="'+sw+'"/>'+
+    '<circle class="donut-arc" cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="#6eb5ff" stroke-width="'+sw+'"'+
+    ' stroke-dasharray="'+shArc+' '+(circ-shArc)+'" stroke-dashoffset="'+circ/4+'"'+
+    ' transform="rotate(-90 '+cx+' '+cy+')" stroke-linecap="butt"'+
+    ' data-name="승협" data-val="'+sh+'" data-pct="'+shPct+'"/>'+
+    '<circle class="donut-arc" cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="#ffb347" stroke-width="'+sw+'"'+
+    ' stroke-dasharray="'+dsArc+' '+(circ-dsArc)+'" stroke-dashoffset="'+(circ/4-shArc)+'"'+
+    ' transform="rotate(-90 '+cx+' '+cy+')" stroke-linecap="butt"'+
+    ' data-name="동성이" data-val="'+ds+'" data-pct="'+dsPct+'"/>';
+  // 중앙 기본 텍스트
+  var tipVal=document.getElementById('dash-donut-tip-val');
+  var tipLbl=document.getElementById('dash-donut-tip-lbl');
+  tipVal.textContent=total.toLocaleString();
+  tipLbl.textContent='총 메시지';
+  // 호버 이벤트
+  svg.querySelectorAll('.donut-arc').forEach(function(arc){
+    arc.addEventListener('mouseenter',function(){
+      tipVal.textContent=arc.dataset.val+' ('+arc.dataset.pct+'%)';
+      tipLbl.textContent=arc.dataset.name;
+    });
+    arc.addEventListener('mouseleave',function(){
+      tipVal.textContent=total.toLocaleString();
+      tipLbl.textContent='총 메시지';
+    });
+    arc.addEventListener('touchstart',function(e){
+      e.stopPropagation();
+      tipVal.textContent=arc.dataset.val+' ('+arc.dataset.pct+'%)';
+      tipLbl.textContent=arc.dataset.name;
+    },{passive:true});
+  });
+  // CSS 애니메이션 (stroke-dashoffset 전환)
+  svg.querySelectorAll('.donut-arc').forEach(function(arc){
+    arc.style.transition='stroke-dashoffset .7s cubic-bezier(.4,0,.2,1), opacity .15s';
+    var finalOffset=parseFloat(arc.getAttribute('stroke-dashoffset'));
+    arc.setAttribute('stroke-dashoffset', finalOffset + circ);
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        arc.setAttribute('stroke-dashoffset', finalOffset);
+      });
+    });
+  });
   document.getElementById('dash-dl-sh-bar').style.width=shPct+'%';
   document.getElementById('dash-dl-sh-pct').textContent=shPct+'%';
   document.getElementById('dash-dl-ds-bar').style.width=dsPct+'%';
@@ -772,33 +918,9 @@ function renderDash(){
     '</div>';
   }).join('');
   document.getElementById('dash-feed').innerHTML=feedHtml;
-  // 키워드 분석
-  var stopWords=new Set(['이','가','을','를','은','는','에','에서','에게','로','으로','와','과','의','도','만','부터','까지','나','너','저','그','것','거','수','있','없','하','되','아','어','제','우리','내','네','더','잘','다','또','좀','뭐','이제','그냥','진짜','정말','너무','완전','엄청','되게','되게','거기','여기','저기','오늘','내일','어제','때','거야','이야','해요','해서','했어','했는데','있어','없어','같아','같은','있는','없는','하는','되는','해야','해도','해서','한다','하면','했다','해줘','해줘서','해줘야','ㅋ','ㅎ','ㅠ','ㅜ','요','들','서','고','게','든','든지','처럼','보다','한테','까','야','아','어','구','는데','는데','이랑','랑','이랑','랑','이나','나','이나']);
-  var wordCount={};
-  msgs.forEach(function(m){
-    if(m['종류']!=='텍스트')return;
-    var text=(m['내용']||'').replace(/[^가-힣ㄱ-ㆎ a-zA-Z0-9]/g,' ');
-    text.split(/\s+/).forEach(function(w){
-      w=w.trim();
-      if(w.length<2)return;
-      if(stopWords.has(w))return;
-      if(/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(w))return;
-      wordCount[w]=(wordCount[w]||0)+1;
-    });
-  });
-  var topWords=Object.keys(wordCount).sort(function(a,b){return wordCount[b]-wordCount[a];}).slice(0,15);
-  var maxW=topWords.length?wordCount[topWords[0]]:1;
-  var kwHtml=topWords.map(function(w,i){
-    var cnt=wordCount[w];
-    var pct=Math.round(cnt/maxW*100);
-    return '<div class="kw-row">'+
-      '<div class="kw-rank">'+(i+1)+'</div>'+
-      '<div class="kw-word">'+esc(w)+'</div>'+
-      '<div class="kw-bar-wrap"><div class="kw-bar-fill" style="width:'+pct+'%"></div></div>'+
-      '<div class="kw-num">'+cnt+'</div>'+
-    '</div>';
-  }).join('');
-  document.getElementById('dash-kw').innerHTML=kwHtml||'<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">분석할 텍스트가 없어요</div>';
+  // 키워드
+  renderKwExcludedChips();
+  renderKeywords();
 }
 function scrollToLatest(){
   var area=document.getElementById('chat-area');
