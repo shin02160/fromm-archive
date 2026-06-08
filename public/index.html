@@ -950,7 +950,7 @@ function _buildKeywords(data){
   var max=list.length?list[0].n:1;
   var filters=[{k:'all',l:'전체'},{k:'seunghyub',l:'승협'},{k:'dongsung',l:'동성'}];
   var fBtns=filters.map(function(f){return '<button class="'+(_dashKwMember===f.k?'on':'')+'" onclick="setDashKw(\''+f.k+'\')">'+f.l+'</button>';}).join('');
-  var chipsHtml=dashExclude.length?'<div class="kw-chips">'+dashExclude.map(function(w){return '<span class="kw-chip">'+esc(w)+'<button class="kw-chip-del" onclick="removeDashExclude(\''+esc(w).replace(/'/g,'\\\')+'\')">×</button></span>';}).join('')+'</div>':'';
+  var chipsHtml=dashExclude.length?'<div class="kw-chips">'+dashExclude.map(function(w){return '<span class="kw-chip">'+esc(w)+'<button class="kw-chip-del" onclick="removeDashExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">×</button></span>';}).join('')+'</div>':'';
   var kwHtml=list.map(function(k,i){
     var pct=(k.n/max*100).toFixed(1);
     var rankCls=i<3?' kw-top3':'';
