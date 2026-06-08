@@ -180,6 +180,31 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .status-box{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text-muted);font-size:13px;}
 .spin{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent-sh);border-radius:50%;animation:sp .8s linear infinite;}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* ---- 통계 / 단어 빈도 ---- */
+.wf-tabs{display:flex;border-bottom:1px solid var(--border);background:rgba(255,255,255,.97);backdrop-filter:blur(12px);flex-shrink:0;}
+.wf-tab{flex:1;padding:13px 0;text-align:center;font-size:14px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.wf-tab.active{color:var(--text);border-bottom-color:var(--green);font-weight:700;}
+.wf-tab[data-wf='승협'].active{border-bottom-color:var(--accent-sh-strong);}
+.wf-tab[data-wf='동성'].active{border-bottom-color:var(--accent-ds);}
+.wf-filter-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;background:rgba(255,255,255,.97);}
+.wf-filter-row{display:flex;align-items:center;gap:8px;width:100%;}
+.wf-add-input{flex:1;min-width:60px;border:1px solid var(--border);border-radius:999px;padding:7px 14px;font-size:13px;font-family:var(--font);outline:none;background:var(--fill-alpha);color:var(--text);}
+.wf-add-input:focus{border-color:var(--green);}
+.wf-add-btn{border:none;background:var(--green);color:#fff;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.wf-chips{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
+.wf-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.2);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;color:var(--red);}
+.wf-chip-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:0 0 0 2px;line-height:1;opacity:.7;transition:opacity .15s;}
+.wf-chip-del:hover{opacity:1;}
+.wf-section-label{font-size:11px;font-weight:700;color:var(--text-muted);padding:12px 16px 6px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;}
+.wf-item{display:flex;align-items:center;gap:10px;padding:9px 16px;}
+.wf-rank{width:22px;text-align:right;font-size:12px;font-weight:700;color:var(--text-muted);flex-shrink:0;}
+.wf-rank.top3{color:var(--amber);font-size:13px;}
+.wf-word{font-size:14px;font-weight:600;flex-shrink:0;min-width:68px;color:var(--text-strong);}
+.wf-bar-wrap{flex:1;height:7px;background:var(--fill-alpha);border-radius:99px;overflow:hidden;}
+.wf-bar{height:100%;border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.wf-count{font-size:12px;color:var(--text-muted);flex-shrink:0;min-width:36px;text-align:right;font-weight:600;}
+.tab-item[data-page='stats'].active .tab-icon svg{stroke:var(--green);}
+.tab-item[data-page='stats'].active .tab-label{color:var(--green);}
 </style>
 </head>
 <body>
@@ -284,6 +309,24 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
     <div id="media-content"><div class="status-box"><div class="spin"></div><div>불러오는 중...</div></div></div>
   </div>
 </div>
+<!-- 통계 -->
+<div class="page" id="page-stats">
+  <div class="page-header"><div class="page-title">통계</div></div>
+  <div class="wf-tabs">
+    <div class="wf-tab active" data-wf="all"  onclick="setWfTab(this,'all')">전체</div>
+    <div class="wf-tab"        data-wf="승협" onclick="setWfTab(this,'승협')">승협</div>
+    <div class="wf-tab"        data-wf="동성" onclick="setWfTab(this,'동성')">동성</div>
+  </div>
+  <div class="wf-filter-bar" id="wf-filter-bar">
+    <div class="wf-filter-row">
+      <input class="wf-add-input" id="wf-exclude-input" placeholder="제외할 단어 추가…" maxlength="20"
+        onkeydown="if(event.key==='Enter')addExcludeWord()">
+      <button class="wf-add-btn" onclick="addExcludeWord()">제외 추가</button>
+    </div>
+    <div class="wf-chips" id="wf-chips"></div>
+  </div>
+  <div id="wf-content"><div class="status-box"><div class="spin"></div><div>불러오는 중...</div></div></div>
+</div>
 <!-- 탭바 -->
 <div id="tabbar">
   <div class="tab-item active" data-page="list" onclick="goPage('list')">
@@ -297,6 +340,10 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
   <div class="tab-item" data-page="media" onclick="goPage('media')">
     <div class="tab-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
     <div class="tab-label">Media</div>
+  </div>
+  <div class="tab-item" data-page="stats" onclick="goPage('stats')">
+    <div class="tab-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+    <div class="tab-label">통계</div>
   </div>
 </div>
 <!-- 미디어 모달 -->
@@ -368,6 +415,7 @@ function filterFriends(q){
 }
 function goPage(id){
   if(id==='chat'){clearFilters();}
+  if(id==='stats'){renderWordFreq();}
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab-item').forEach(function(t){t.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
@@ -621,13 +669,103 @@ function openModal(m){
 function closeModal(){document.getElementById('media-modal').classList.remove('open');document.getElementById('modal-content').innerHTML='';}
 document.getElementById('media-modal').addEventListener('click',function(e){if(e.target===document.getElementById('media-modal'))closeModal();});
 
+/* ---- 단어 빈도 분석 ---- */
+var wfMember='all';
+var wfExclude=['오빠'];
+// 기본 불용어: 조사·접속사·감탄사·이모티콘 등
+var WF_STOP=new Set(['이','가','을','를','에','의','와','과','은','는','도','로','으로','에서','에게','한테','이다','하다','했어','해서','해도','했는데','했지','했어요','했습니다','합니다','해요','이야','이에요','예요','아','어','야','여','거','것','지','수','더','그','저','제','내','네','이','그래','그냥','진짜','ㅋ','ㅋㅋ','ㅋㅋㅋ','ㅋㅋㅋㅋ','ㅋㅋㅋㅋㅋ','ㅎ','ㅎㅎ','ㅎㅎㅎ','ㅠ','ㅠㅠ','ㅜ','ㅜㅜ','~~','!!!','!!','!','?','...','..','.',',']);
+
+function tokenize(text){
+  // 한글·영숫자 단어만 추출, 2자 이상
+  var words=[];
+  var tokens=(text||'').split(/[\s\n\r\t]+/);
+  tokens.forEach(function(t){
+    var w=t.replace(/[^가-힣ꥠ-꥿ힰ-퟿\w]/g,'').trim();
+    if(w.length>=2)words.push(w);
+  });
+  return words;
+}
+
+function getWordFreq(member){
+  var freq={};
+  var userExclude=new Set(wfExclude.map(function(w){return w.toLowerCase();}));
+  allMsgs.forEach(function(m){
+    if(m['종류']!=='텍스트')return;
+    if(member!=='all'&&getMember(m)!==member)return;
+    tokenize(m['내용']).forEach(function(w){
+      var wl=w.toLowerCase();
+      if(WF_STOP.has(w)||WF_STOP.has(wl))return;
+      if(userExclude.has(w)||userExclude.has(wl))return;
+      freq[w]=(freq[w]||0)+1;
+    });
+  });
+  return Object.entries(freq).sort(function(a,b){return b[1]-a[1];}).slice(0,50);
+}
+
+function setWfTab(el,m){
+  document.querySelectorAll('.wf-tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  wfMember=m;
+  renderWordFreq();
+}
+
+function addExcludeWord(){
+  var inp=document.getElementById('wf-exclude-input');
+  var word=inp.value.trim();
+  if(!word||wfExclude.indexOf(word)>=0){inp.value='';return;}
+  wfExclude.push(word);
+  inp.value='';
+  renderWfChips();
+  renderWordFreq();
+}
+
+function removeExcludeWord(word){
+  wfExclude=wfExclude.filter(function(w){return w!==word;});
+  renderWfChips();
+  renderWordFreq();
+}
+
+function renderWfChips(){
+  var chips=document.getElementById('wf-chips');
+  if(!chips)return;
+  if(!wfExclude.length){chips.innerHTML='';return;}
+  chips.innerHTML=wfExclude.map(function(w){
+    return '<span class="wf-chip">'+esc(w)+'<button class="wf-chip-del" onclick="removeExcludeWord(\''+esc(w).replace(/'/g,"\\'")+'\')" title="제거">×</button></span>';
+  }).join('');
+}
+
+function renderWordFreq(){
+  var content=document.getElementById('wf-content');
+  if(!content)return;
+  if(!allMsgs.length){content.innerHTML='<div class="status-box"><div>데이터 없음</div></div>';return;}
+  var words=getWordFreq(wfMember);
+  if(!words.length){content.innerHTML='<div class="status-box"><div>단어가 없어요</div></div>';return;}
+  var max=words[0][1];
+  var color=wfMember==='승협'?'var(--accent-sh-strong)':wfMember==='동성'?'var(--accent-ds)':'var(--accent-sh-strong)';
+  var memberLabel=wfMember==='all'?'전체 메시지':wfMember+' 메시지';
+  var html='<div class="wf-section-label">자주 쓴 단어 · '+memberLabel+'</div><div style="padding:4px 0 60px;">';
+  words.forEach(function(pair,i){
+    var w=pair[0],cnt=pair[1];
+    var pct=Math.round(cnt/max*100);
+    var rankCls=i<3?' top3':'';
+    html+='<div class="wf-item">'
+      +'<div class="wf-rank'+rankCls+'">'+(i+1)+'</div>'
+      +'<div class="wf-word">'+esc(w)+'</div>'
+      +'<div class="wf-bar-wrap"><div class="wf-bar" style="width:'+pct+'%;background:'+color+'"></div></div>'
+      +'<div class="wf-count">'+cnt+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  content.innerHTML=html;
+}
+
 (async function(){
   try{
     var r=await fetch('/api/messages.js',{method:'POST',headers:{'Content-Type':'application/json'}});
     if(!r.ok)throw new Error('API '+r.status);
     var data=await r.json();
     allMsgs=data.messages.slice().sort(function(a,b){return a['날짜'].localeCompare(b['날짜']);});
-    renderChat(allMsgs);renderMedia();buildMonthFilter();
+    renderChat(allMsgs);renderMedia();buildMonthFilter();renderWfChips();renderWordFreq();
   }catch(e){
     document.getElementById('chat-area').innerHTML='<div class="status-box"><div style="font-size:24px">⚠️</div><div>불러오기 실패: '+esc(e.message)+'</div></div>';
   }
