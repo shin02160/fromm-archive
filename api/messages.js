@@ -1,4 +1,5 @@
-const DB_ID = 'dfa54851e4ed478b9054cd5756f32491';
+const SUPABASE_URL = 'https://cuarcwzthhdzmarjgyax.supabase.co';
+const TABLE = 'Fromm_NF';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -6,49 +7,36 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = process.env.NOTION_TOKEN;
-  if (!token) return res.status(500).json({ error: 'NOTION_TOKEN not set' });
+  const key = process.env.SUPABASE_KEY;
+  if (!key) return res.status(500).json({ error: 'SUPABASE_KEY not set' });
 
-  let results = [], cursor = undefined;
+  const headers = {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json'
+  };
+
   try {
-    do {
-      const body = {
-        sorts: [
-          { property: '날짜', direction: 'ascending' },
-          { property: '순번', direction: 'ascending' }
-        ],
-        page_size: 100,
-        ...(cursor ? { start_cursor: cursor } : {})
-      };
-      const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Notion-Version': '2022-06-28',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-      if (!r.ok) {
-        const err = await r.text();
-        return res.status(r.status).json({ error: err });
-      }
-      const data = await r.json();
-      results = results.concat(data.results);
-      cursor = data.has_more ? data.next_cursor : undefined;
-    } while (cursor);
+    const [r, rEmoji] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=*&limit=10000&order=${encodeURIComponent('날짜.asc,순번.asc')}`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/fromm_emoji?select=keyword,image_url`, { headers })
+    ]);
 
-    const rt = (arr) => arr?.map(t => t.plain_text).join('') || '';
-
-    function mapMember(sender, member) {
-      if (member) return member;
-      // 동성이는 닉변 없음, 나머지 보낸사람은 승협으로 처리
-      if (sender === '동성이') return '동성';
-      if (sender) return '승협';
-      return '';
+    if (!r.ok) {
+      const err = await r.text();
+      return res.status(r.status).json({ error: err });
     }
 
-    // 시간 텍스트 → 분 단위 숫자 변환 (정렬용)
+    const rows = await r.json();
+
+    const emojiMap = {};
+    if (rEmoji.ok) {
+      const emojiRows = await rEmoji.json();
+      if (Array.isArray(emojiRows)) {
+        emojiRows.forEach(e => { if (e.keyword && e.image_url) emojiMap[e.keyword] = e.image_url; });
+      }
+    }
+
     function timeToMinutes(t) {
       if (!t) return -1;
       t = t.trim();
@@ -61,15 +49,21 @@ export default async function handler(req, res) {
       return -1;
     }
 
-    const messages = results.map((p, idx) => {
-      const props = p.properties;
-      const 보낸사람  = rt(props['보낸사람']?.rich_text);
-      const 시간      = rt(props['시간']?.rich_text);
-      const 멤버raw   = props['멤버']?.select?.name || '';
-      const 날짜raw   = props['날짜']?.date?.start || '';
-      const createdAt = p.created_time || '';
+    function mapMember(sender, member) {
+      if (member) return member;
+      if (sender === '동성이') return '동성';
+      if (sender) return '승협';
+      return '';
+    }
 
-      // 날짜 + 시간 합쳐서 datetime 구성
+    const messages = rows.map((row, idx) => {
+      const 날짜raw = (row['날짜'] || '').replace(/\//g, '-');
+      const 시간    = row['시간'] || '';
+      const 보낸사람 = row['보낸사람'] || '';
+      const 멤버raw  = row['멤버'] || '';
+      const 미디어_URL = row['미디어_URL'] || '';
+      const 순번    = row['순번'] ?? null;
+
       let datetime = 날짜raw;
       if (날짜raw && 시간 && !날짜raw.includes('T')) {
         const mins = timeToMinutes(시간);
@@ -79,9 +73,7 @@ export default async function handler(req, res) {
         }
       }
 
-      const 미디어_URL = props['미디어_URL']?.url || '';
-      const 종류raw    = props['종류']?.select?.name || '';
-      let 종류 = 종류raw;
+      let 종류 = row['종류'] || '';
       if (!종류 && 미디어_URL) {
         const ext = 미디어_URL.split('?')[0].split('.').pop().toLowerCase();
         if (['jpg','jpeg','png','gif','webp'].includes(ext)) 종류 = '사진';
@@ -90,36 +82,31 @@ export default async function handler(req, res) {
       }
 
       return {
-        id: p.id,
+        id: String(row['No'] ?? idx),
         _idx: idx,
         _timeMin: timeToMinutes(시간),
-        내용: rt(props['메시지']?.rich_text),
+        내용: row['메시지'] || '',
         날짜: datetime,
         날짜raw,
         시간,
-        순번: props['순번']?.number ?? null,
+        순번,
         멤버: mapMember(보낸사람, 멤버raw),
         보낸사람,
         종류: 종류 || '텍스트',
         미디어_URL,
-        메모: rt(props['메모']?.rich_text),
       };
     }).filter(m => m.날짜raw);
 
-    // 정렬: 1차 날짜, 2차 순번(있으면), 3차 시간, 4차 _idx
     messages.sort((a, b) => {
       if (a.날짜raw !== b.날짜raw) return a.날짜raw.localeCompare(b.날짜raw);
-      // 둘 다 순번 있으면 순번 우선
       if (a.순번 !== null && b.순번 !== null) return a.순번 - b.순번;
-      // 순번 있는 쪽 우선
       if (a.순번 !== null) return -1;
       if (b.순번 !== null) return 1;
-      // 둘 다 순번 없으면 시간 → _idx
       if (a._timeMin !== b._timeMin) return a._timeMin - b._timeMin;
       return a._idx - b._idx;
     });
 
-    res.status(200).json({ messages, total: messages.length });
+    res.status(200).json({ messages, emojiMap, total: messages.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
