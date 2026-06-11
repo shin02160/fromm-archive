@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>💬 Fromm Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
@@ -544,7 +547,7 @@ function filterFriends(q){
   cells.forEach(function(c,i){if(c)c.style.display=(!q||names[i].includes(q))?'':'none';});
 }
 function goPage(id){
-  try{if(id==='chat'){clearFilters();}if(id==='dash'){renderDash();}}catch(e){console.error('goPage',e);}
+  try{if(id==='chat'){clearFilters();}if(id==='dash'&&_dashDirty){renderDash();_dashDirty=false;}if(id==='media'&&_mediaDirty){renderMedia();_mediaDirty=false;}}catch(e){console.error('goPage',e);}
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab-item').forEach(function(t){t.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
@@ -1035,14 +1038,28 @@ function openModal(m){
 function closeModal(){document.getElementById('media-modal').classList.remove('open');document.getElementById('modal-content').innerHTML='';}
 document.getElementById('media-modal').addEventListener('click',function(e){if(e.target===document.getElementById('media-modal'))closeModal();});
 
+var _dashDirty=false,_mediaDirty=false;
 (async function(){
+  var CACHE_KEY='fromm_v1',CACHE_TTL=3600000;
+  function loadCache(){try{var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&c.ts&&Date.now()-c.ts<CACHE_TTL)return c.d;}catch(e){}return null;}
+  function saveCache(d){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),d:d}));}catch(e){}}
   try{
-    var r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'}});
-    if(!r.ok)throw new Error('API '+r.status);
-    var data=await r.json();
-    allMsgs=data.messages.slice().sort(function(a,b){return a['날짜'].localeCompare(b['날짜']);});
-    if(data.emojiMap)emojiMap=data.emojiMap;
-    renderChat(allMsgs);renderMedia();buildMonthFilter();renderDash();
+    var cached=loadCache();
+    if(cached){
+      allMsgs=cached.messages;
+      if(cached.emojiMap)emojiMap=cached.emojiMap;
+    }else{
+      var r=await fetch('/api/messages');
+      if(!r.ok)throw new Error('API '+r.status);
+      var data=await r.json();
+      allMsgs=data.messages.slice().sort(function(a,b){return a['날짜'].localeCompare(b['날짜']);});
+      if(data.emojiMap)emojiMap=data.emojiMap;
+      saveCache({messages:allMsgs,emojiMap:emojiMap});
+    }
+    renderChat(allMsgs);buildMonthFilter();
+    _dashDirty=true;_mediaDirty=true;
+    var _ap=document.querySelector('.page.active');
+    if(_ap){if(_ap.id==='page-dash'){renderDash();_dashDirty=false;}else if(_ap.id==='page-media'){renderMedia();_mediaDirty=false;}}
   }catch(e){
     document.getElementById('chat-area').innerHTML='<div class="status-box"><div style="font-size:24px">⚠️</div><div>불러오기 실패: '+esc(e.message)+'</div></div>';
   }

@@ -1,10 +1,10 @@
 const SUPABASE_URL = 'https://cuarcwzthhdzmarjgyax.supabase.co';
 const TABLE = 'Fromm_NF';
-const PAGE_SIZE = 1000; // Supabase 기본 최대값
+const PAGE_SIZE = 1000;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://fromm-nf.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -19,32 +19,43 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 이모티콘 맵 병렬 조회
+    const ORDER = encodeURIComponent('날짜.asc,순번.asc');
+    const baseUrl = `${SUPABASE_URL}/rest/v1/${TABLE}?select=*&order=${ORDER}`;
+
+    // 이모티콘 맵 병렬 조회 시작
     const rEmojiPromise = fetch(`${SUPABASE_URL}/rest/v1/fromm_emoji?select=keyword,image_url`, {
       headers: { ...headers, 'Prefer': '' }
     });
 
-    // 페이지네이션으로 전체 메시지 조회 (1000개씩)
-    let allRows = [];
-    let offset = 0;
+    // 첫 페이지 조회 + Content-Range 헤더로 전체 개수 파악
+    const firstR = await fetch(`${baseUrl}&limit=${PAGE_SIZE}&offset=0`, { headers });
+    if (!firstR.ok) {
+      const err = await firstR.text();
+      return res.status(firstR.status).json({ error: err });
+    }
 
-    while (true) {
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/${TABLE}?select=*&order=${encodeURIComponent('날짜.asc,순번.asc')}&limit=${PAGE_SIZE}&offset=${offset}`,
-        { headers }
-      );
+    const contentRange = firstR.headers.get('content-range') || '';
+    const totalMatch = contentRange.match(/\/(\d+)$/);
+    const total = totalMatch ? parseInt(totalMatch[1]) : 0;
+    const firstRows = await firstR.json();
 
-      if (!r.ok) {
-        const err = await r.text();
-        return res.status(r.status).json({ error: err });
+    let allRows = firstRows;
+
+    // 추가 페이지가 있으면 병렬로 조회 (직렬 N회 → 병렬 1회)
+    if (total > PAGE_SIZE) {
+      const pageCount = Math.ceil(total / PAGE_SIZE);
+      const pagePromises = [];
+      for (let i = 1; i < pageCount; i++) {
+        pagePromises.push(
+          fetch(`${baseUrl}&limit=${PAGE_SIZE}&offset=${i * PAGE_SIZE}`, { headers })
+            .then(r => {
+              if (!r.ok) throw new Error(`Page ${i} failed: ${r.status}`);
+              return r.json();
+            })
+        );
       }
-
-      const rows = await r.json();
-      allRows = allRows.concat(rows);
-
-      // 가져온 행이 PAGE_SIZE보다 적으면 마지막 페이지
-      if (rows.length < PAGE_SIZE) break;
-      offset += PAGE_SIZE;
+      const remainingPages = await Promise.all(pagePromises);
+      allRows = [firstRows, ...remainingPages].flat();
     }
 
     // 이모티콘 맵
@@ -117,7 +128,6 @@ export default async function handler(req, res) {
       };
     }).filter(m => m.날짜raw);
 
-    // 정렬: 1차 날짜, 2차 순번, 3차 시간, 4차 _idx
     messages.sort((a, b) => {
       if (a.날짜raw !== b.날짜raw) return a.날짜raw.localeCompare(b.날짜raw);
       if (a.순번 !== null && b.순번 !== null) return a.순번 - b.순번;
@@ -127,6 +137,8 @@ export default async function handler(req, res) {
       return a._idx - b._idx;
     });
 
+    // 아카이브 데이터는 자주 바뀌지 않으므로 1시간 캐시, 24시간 stale-while-revalidate
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.status(200).json({ messages, emojiMap, total: messages.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
