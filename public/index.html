@@ -224,8 +224,10 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .donut-arc{transition:opacity .15s;}
 .donut-arc:hover{opacity:.8;cursor:pointer;}
 .donut-center-label{pointer-events:none;}
-.heat-outer{overflow-x:auto;padding-bottom:4px;}
+.heat-outer{overflow-x:auto;padding-bottom:2px;}
 .heat-outer::-webkit-scrollbar{height:0;}
+.heat-months{display:flex;gap:2px;margin-bottom:3px;}
+.heat-month-cell{width:11px;height:13px;flex-shrink:0;font-size:9px;color:var(--text-tertiary);font-weight:700;white-space:nowrap;overflow:visible;line-height:13px;}
 .heat-grid{display:flex;gap:2px;}
 .heat-col{display:flex;flex-direction:column;gap:2px;}
 .heat-cell{width:11px;height:11px;border-radius:2.5px;background:var(--fill-alpha-2);}
@@ -422,7 +424,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
       <!-- 활동 히트맵 -->
       <div class="dash-block">
         <div class="dash-btitle">활동 히트맵</div>
-        <div class="heat-outer"><div class="heat-grid" id="dash-heat"></div></div>
+        <div class="heat-outer"><div class="heat-months" id="dash-heat-months"></div><div class="heat-grid" id="dash-heat"></div></div>
         <div class="heat-labels">적음 <div class="heat-cell lv1"></div><div class="heat-cell lv2"></div><div class="heat-cell lv3"></div><div class="heat-cell lv4"></div> 많음</div>
       </div>
       <!-- 키워드 분석 -->
@@ -896,6 +898,15 @@ function renderDash(){
     cols.push('<div class="heat-col">'+col.join('')+'</div>');
   }
   document.getElementById('dash-heat').innerHTML=cols.join('');
+  // 히트맵 월 표시
+  var monthCells=[];var lastMo=-1;var cur2=new Date(startDay);
+  while(cur2<=today){
+    var mo=cur2.getMonth();
+    if(mo!==lastMo){monthCells.push('<div class="heat-month-cell">'+(mo+1)+'월</div>');lastMo=mo;}
+    else{monthCells.push('<div class="heat-month-cell"></div>');}
+    cur2.setDate(cur2.getDate()+7);
+  }
+  document.getElementById('dash-heat-months').innerHTML=monthCells.join('');
   // 히트맵 툴팁
   var tip=document.getElementById('heat-tip');
   document.getElementById('dash-heat').querySelectorAll('.heat-cell').forEach(function(cell){
@@ -917,6 +928,20 @@ function renderDash(){
       var t=e.touches[0];showTip(t.clientX,t.clientY);
       setTimeout(function(){tip.style.display='none';},5000);
     },{passive:false});
+  });
+  // 월별 바 차트 터치/호버 툴팁
+  document.getElementById('dash-monthly').querySelectorAll('.mbc').forEach(function(bar){
+    function showBarTip(x,y){
+      tip.innerHTML='<b>'+bar.dataset.mo+'</b>&nbsp; 승협 '+bar.dataset.sh+'건 · 동성이 '+bar.dataset.ds+'건';
+      tip.style.display='block';
+      var tw=tip.offsetWidth,th=tip.offsetHeight;
+      var lx=Math.min(Math.max(x-Math.round(tw/2),8),window.innerWidth-tw-8);
+      tip.style.left=lx+'px';tip.style.top=Math.max(y-th-8,8)+'px';
+    }
+    bar.addEventListener('touchstart',function(e){e.preventDefault();var t=e.touches[0];showBarTip(t.clientX,t.clientY);setTimeout(function(){tip.style.display='none';},3000);},{passive:false});
+    bar.addEventListener('mouseenter',function(e){showBarTip(e.clientX,e.clientY);});
+    bar.addEventListener('mousemove',function(e){showBarTip(e.clientX,e.clientY);});
+    bar.addEventListener('mouseleave',function(){tip.style.display='none';});
   });
   // 최근 메시지 피드
   var recent=msgs.slice(-5).reverse();
