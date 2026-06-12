@@ -815,7 +815,7 @@ function renderDash(){
     var v=monthly[k];var tot=v.sh+v.ds;
     var hPct=maxM?Math.round(tot/maxM*100):0;
     var lbl=k.slice(5).replace(/^0/,'')+'월';
-    return '<div class="mbc"><div class="mbs" style="height:'+hPct+'%">'+
+    return '<div class="mbc" data-mo="'+lbl+'" data-sh="'+v.sh+'" data-ds="'+v.ds+'"><div class="mbs" style="height:'+hPct+'%">'+
       '<div class="bar-sh" style="flex:'+v.sh+';min-height:'+(v.sh?'2px':'0')+'"></div>'+
       '<div class="bar-ds" style="flex:'+v.ds+';min-height:'+(v.ds?'2px':'0')+'"></div>'+
       '</div><div class="mbl">'+lbl+'</div></div>';
