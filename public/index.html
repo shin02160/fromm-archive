@@ -5,6 +5,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>💬 Fromm Archive</title>
+<link rel="preload" href="/api/messages" as="fetch" crossorigin="anonymous">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
@@ -24,8 +28,8 @@
   --font:"Pretendard","Pretendard JP",-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html{height:100%;background:#e5e5ea;overflow:hidden;}body{height:100%;background:var(--bg);overflow:hidden;}
-body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;width:var(--app-w);height:100%;margin:0 auto;position:relative;overflow:hidden;-webkit-font-smoothing:antialiased;}
+html{height:100%;background:var(--bg);overflow:hidden;}body{height:100%;background:var(--bg);overflow:hidden;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;width:100%;height:100%;margin:0 auto;position:relative;overflow:hidden;-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0px);}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--fill-alpha-2);border-radius:99px;}
 #pages{flex:1;overflow:hidden;position:relative;min-height:0;}
 #page-chat{overflow:hidden;padding-bottom:0;}
@@ -164,7 +168,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .profile-days{display:flex;align-items:center;gap:6px;}
 .profile-days .heart{color:#ff4d6a;font-size:18px;}
 .profile-days .cnt{font-size:18px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
-#tabbar{width:100%;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);display:flex;padding-bottom:var(--safe-b);z-index:200;height:var(--tab-h);flex-shrink:0;}
+#tabbar{width:100%;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);display:flex;padding-bottom:var(--safe-b);z-index:200;height:calc(var(--tab-h) + var(--safe-b));flex-shrink:0;}
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:8px 0;}
 .tab-icon{display:flex;align-items:center;justify-content:center;width:26px;height:26px;transition:all .15s;}
 .tab-icon svg{width:24px;height:24px;stroke:var(--text-tertiary);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:all .15s;}
