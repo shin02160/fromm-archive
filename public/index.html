@@ -517,16 +517,31 @@ window.addEventListener('load',function(){
 var allMsgs=[],chatMember='all',mediaTab='all',mediaMember='all',emojiMap={};
 function replaceEmoji(text){
   if(!text||!Object.keys(emojiMap).length)return text;
+  // 텍스트 없이 이모티콘만 있는 경우 전체 너비로 표시
+  var onlyEmoji=/^\s*(\{\{[^}]+\}\}\s*)+$/.test(text.replace(/<br\s*\/?>/gi,'\n').replace(/&[a-z]+;/gi,''));
   return text.replace(/\{\{([^}]+)\}\}/g,function(_,key){
     var url=emojiMap[key];
-    return url?'<img src="'+url+'" style="height:1.4em;vertical-align:middle;display:inline-block;border-radius:3px;" alt="'+esc(key)+'">':'{{'+key+'}}';
+    if(!url)return '{{'+key+'}}';
+    if(onlyEmoji){
+      return '<img src="'+url+'" style="display:block;width:200px;max-width:100%;border-radius:8px;margin:2px 0;" alt="'+esc(key)+'">';
+    }
+    return '<img src="'+url+'" style="width:48px;height:48px;object-fit:contain;vertical-align:middle;display:inline-block;border-radius:4px;margin:0 2px;" alt="'+esc(key)+'">';
   });
 }
 function d0(s){return s?s.slice(0,10):'';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtDate(s){if(!s)return '';return new Date(s).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});}
 function fmtTime(m){if(m['시간'])return m['시간'].trim();if(m['날짜']&&m['날짜'].includes('T'))return new Date(m['날짜']).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:true});return '';}
-function getMember(m){if(m['멤버'])return m['멤버'];if(m['보낸사람']==='동성이')return '동성';if(m['보낸사람'])return '승협';return '';}
+function getMember(m){
+  var mb=m['멤버'],sn=m['보낸사람'];
+  if(mb==='승협'||mb==='승협이'||mb==='이지곰')return '승협';
+  if(mb==='동성'||mb==='동성이')return '동성';
+  if(mb)return mb;
+  if(sn==='동성이')return '동성';
+  if(sn==='승협'||sn==='승협이'||sn==='이지곰')return '승협';
+  if(sn)return '승협'; // 그 외 모든 보낸사람 → 승협
+  return '';
+}
 function getDisplayName(m){return m['보낸사람']||m['멤버']||'?';}
 function getAvatar(member){if(member==='승협')return '<img src="'+SH_PROFILE+'" alt="">';if(member==='동성')return '<img src="'+DS_PROFILE+'" alt="">';return member?member[0]:'?';}
 // 프롬친구 일수 (Fromm 가입일 기준)
@@ -944,6 +959,8 @@ function renderChat(msgs,scrollTop){
     if(d&&d!==lastD){lastD=d;var el=document.createElement('div');el.className='date-div';el.innerHTML='<span>'+fmtDate(m['날짜'])+'</span>';frag.appendChild(el);}
     var member=getMember(m),dn=getDisplayName(m),kind=m['종류'],murl=m['미디어_URL'],content='';
     var color=MCOLOR[member]||'#aaa';
+    var rawText=(m['내용']||'').trim();
+    var isStickerOnly=kind==='텍스트'&&/^\{\{[^}]+\}\}$/.test(rawText);
     if(kind==='사진'&&murl){content='<img src="'+esc(murl)+'" alt="" loading="lazy">';if(m['내용'])content+='<div style="margin-top:6px">'+replaceEmoji(esc(m['내용']).replace(/\n/g,'<br>'))+'</div>';}
     else if(kind==='음성'&&murl){content=makeVoicePlayer(murl,color);}
     else if(kind==='영상'&&murl){content='<video controls src="'+esc(murl)+'" style="max-width:100%;border-radius:10px"></video>';}
@@ -952,7 +969,10 @@ function renderChat(msgs,scrollTop){
     var memo=m['메모']?'<div class="msg-memo">📝 '+esc(m['메모'])+'</div>':'';
     var timeStr=fmtTime(m);
     var row=document.createElement('div');row.className='msg-row';
-    row.innerHTML='<div class="av">'+getAvatar(member)+'</div><div class="bwrap"><div class="sname" style="color:'+color+'">'+esc(dn)+'</div><div style="display:flex;align-items:flex-end;gap:6px"><div class="bubble">'+content+'</div>'+(timeStr?'<span class="msg-time" style="flex-shrink:0;padding-bottom:2px">'+timeStr+'</span>':'')+'</div>'+(badge?'<div class="msg-meta">'+badge+'</div>':'')+memo+'</div>';
+    var bubbleHtml=isStickerOnly
+      ?'<div style="background:none;padding:0;box-shadow:none;">'+content+'</div>'
+      :'<div class="bubble">'+content+'</div>';
+    row.innerHTML='<div class="av">'+getAvatar(member)+'</div><div class="bwrap"><div class="sname" style="color:'+color+'">'+esc(dn)+'</div><div style="display:flex;align-items:flex-end;gap:6px">'+bubbleHtml+(timeStr?'<span class="msg-time" style="flex-shrink:0;padding-bottom:2px">'+timeStr+'</span>':'')+'</div>'+(badge?'<div class="msg-meta">'+badge+'</div>':'')+memo+'</div>';
     frag.appendChild(row);
   });
   area.innerHTML='';area.appendChild(frag);

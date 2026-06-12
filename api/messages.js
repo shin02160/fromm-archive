@@ -3,7 +3,7 @@ const TABLE = 'Fromm_NF';
 const PAGE_SIZE = 1000; // Supabase 기본 최대값
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://nf-album-poca.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -53,7 +53,13 @@ export default async function handler(req, res) {
     if (rEmoji.ok) {
       const emojiRows = await rEmoji.json();
       if (Array.isArray(emojiRows)) {
-        emojiRows.forEach(e => { if (e.keyword && e.image_url) emojiMap[e.keyword] = e.image_url; });
+        emojiRows.forEach(e => {
+          if (e.keyword && e.image_url) {
+            // DB에 {{키워드}} 형식으로 저장된 경우 중괄호 제거
+            const key = e.keyword.replace(/^\{\{|\}\}$/g, '').trim();
+            emojiMap[key] = e.image_url;
+          }
+        });
       }
     }
 
@@ -70,9 +76,14 @@ export default async function handler(req, res) {
     }
 
     function mapMember(sender, member) {
-      if (member) return member;
+      // 멤버 Select 필드 우선 — 이형 닉네임 정규화
+      if (member === '승협' || member === '승협이' || member === '이지곰') return '승협';
+      if (member === '동성' || member === '동성이') return '동성';
+      if (member) return member; // 그 외 값은 그대로
+      // 보낸사람 폴백
       if (sender === '동성이') return '동성';
-      if (sender) return '승협';
+      if (sender === '승협' || sender === '승협이' || sender === '이지곰') return '승협';
+      if (sender) return '승협'; // 닉네임 변경 이후 새 닉네임도 승협으로
       return '';
     }
 
