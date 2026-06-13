@@ -248,8 +248,10 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
 .kw-bar-wrap{flex:1;height:6px;background:var(--fill-alpha);border-radius:99px;overflow:hidden;}
 .kw-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#8ec5ff,#6eb5ff);}
 .kw-num{font-size:12px;font-weight:700;color:var(--text-neutral);width:32px;text-align:right;flex:none;}
-.kw-exclude-btn{width:18px;height:18px;border-radius:99px;border:none;background:var(--fill-alpha-2);color:var(--text-tertiary);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s;}
+.kw-exclude-btn{height:18px;border-radius:99px;border:none;background:var(--fill-alpha-2);color:var(--text-tertiary);font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s;padding:0 6px;white-space:nowrap;}
 .kw-exclude-btn:hover{background:#ff4d6a22;color:#ff4d6a;}
+.kw-exclude-btn.perm{background:#ff4d6a18;color:#ff4d6a;}
+.kw-exclude-btn.perm:hover{background:#ff4d6a33;}
 /* 키워드 필터 헤더 */
 .kw-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
 .kw-chips{display:flex;gap:6px;}
@@ -380,7 +382,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
           <div class="sc-sub" id="dash-sh-pct">–</div>
         </div>
         <div class="sumcard">
-          <div class="sc-top"><span class="sc-label">동성이</span><span class="sc-ic" style="width:22px;height:22px;border-radius:99px;background:#ffb347;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;">동</span></div>
+          <div class="sc-top"><span class="sc-label">동성</span><span class="sc-ic" style="width:22px;height:22px;border-radius:99px;background:#ffb347;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;">동</span></div>
           <div class="sc-value" id="dash-ds">–</div>
           <div class="sc-sub" id="dash-ds-pct">–</div>
         </div>
@@ -390,7 +392,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
         <div class="dash-btitle">월별 메시지</div>
         <div class="chart-legend">
           <span><i style="background:#6eb5ff;"></i>승협</span>
-          <span><i style="background:#ffb347;"></i>동성이</span>
+          <span><i style="background:#ffb347;"></i>동성</span>
         </div>
         <div class="month-chart" id="dash-monthly"></div>
       </div>
@@ -414,7 +416,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;}
             </div>
             <div class="dl-row">
               <div class="dl-dot" style="background:#ffb347;"></div>
-              <div class="dl-name">동성이</div>
+              <div class="dl-name">동성</div>
               <div class="dl-bar-wrap"><div class="dl-bar-fill" id="dash-dl-ds-bar" style="background:#ffb347;width:0%"></div></div>
               <div class="dl-pct" id="dash-dl-ds-pct">–</div>
             </div>
@@ -712,12 +714,23 @@ function applyMfFilter(){
 
 // ── 키워드 상태 ─────────────────────────────────────────────
 var kwMember='전체';
-var customExcludeWords=(function(){
+var sessionExcludeWords=new Set(); // 세션 제외 (새로고침 시 초기화)
+var customExcludeWords=(function(){  // 영구 제외 (localStorage)
   try{var s=localStorage.getItem('fromm_kw_exclude');return new Set(s?JSON.parse(s):[]);}
   catch(e){return new Set();}
 })();
 function saveExcludeWords(){
   try{localStorage.setItem('fromm_kw_exclude',JSON.stringify(Array.from(customExcludeWords)));}catch(e){}
+}
+function addSessionExclude(word){
+  sessionExcludeWords.add(word);
+  renderKwExcludedChips();renderKeywords();
+}
+function addPermExclude(word){
+  sessionExcludeWords.delete(word); // 세션 제외에서 제거 후 영구로 이동
+  customExcludeWords.add(word);
+  saveExcludeWords();
+  renderKwExcludedChips();renderKeywords();
 }
 function setKwMember(btn,member){
   kwMember=member;
@@ -744,10 +757,16 @@ function removeKwExclude(word){
 function renderKwExcludedChips(){
   var el=document.getElementById('kw-excluded-chips');
   if(!el)return;
-  if(customExcludeWords.size===0){el.innerHTML='';return;}
-  el.innerHTML=Array.from(customExcludeWords).map(function(w){
-    return '<span class="kw-excl-chip">'+esc(w)+'<button onclick="removeKwExclude(\''+esc(w).replace(/'/g,"\\'")+'\')" title="제외 해제">✕</button></span>';
+  var sessHtml=Array.from(sessionExcludeWords).map(function(w){
+    var ew=esc(w).replace(/'/g,"\\'");
+    return '<span class="kw-excl-chip" style="opacity:.7;border-style:dashed" title="세션 제외">'+esc(w)+
+      '<button onclick="sessionExcludeWords.delete(\''+ew+'\');renderKwExcludedChips();renderKeywords();" title="제외 해제">✕</button>'+
+    '</span>';
   }).join('');
+  var permHtml=Array.from(customExcludeWords).map(function(w){
+    return '<span class="kw-excl-chip" title="영구 제외">'+esc(w)+'<button onclick="removeKwExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">✕</button></span>';
+  }).join('');
+  el.innerHTML=sessHtml+permHtml;
 }
 function renderKeywords(){
   if(!allMsgs.length)return;
@@ -756,6 +775,7 @@ function renderKeywords(){
   var barColor=kwMember==='동성'?'linear-gradient(90deg,#fcd380,#ffb347)':'linear-gradient(90deg,#8ec5ff,#6eb5ff)';
   var stopWords=new Set(['이','가','을','를','은','는','에','에서','에게','로','으로','와','과','의','도','만','부터','까지','나','너','저','그','것','거','수','있','없','하','되','아','어','제','우리','내','네','더','잘','다','또','좀','뭐','이제','그냥','진짜','정말','너무','완전','엄청','되게','거기','여기','저기','오늘','내일','어제','때','거야','이야','해요','해서','했어','했는데','있어','없어','같아','같은','있는','없는','하는','되는','해야','해도','해서','한다','하면','했다','해줘','해줘서','해줘야','ㅋ','ㅎ','ㅠ','ㅜ','요','들','서','고','게','든','든지','처럼','보다','한테','까','야','아','어','구','는데','이랑','랑','이나','나','오빠']);
   customExcludeWords.forEach(function(w){stopWords.add(w);});
+  sessionExcludeWords.forEach(function(w){stopWords.add(w);});
   var wordCount={};
   targetMsgs.forEach(function(m){
     if(m['종류']!=='텍스트')return;
@@ -778,7 +798,8 @@ function renderKeywords(){
       '<div class="kw-word">'+esc(w)+'</div>'+
       '<div class="kw-bar-wrap"><div class="kw-bar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+
       '<div class="kw-num">'+cnt+'</div>'+
-      '<button class="kw-exclude-btn" title="제외" onclick="(function(){customExcludeWords.add(\''+esc(w).replace(/'/g,"\\'")+'\');saveExcludeWords();renderKwExcludedChips();renderKeywords();})()">✕</button>'+
+      '<button class="kw-exclude-btn" title="이번만 숨김" onclick="addSessionExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">숨김</button>'+
+      '<button class="kw-exclude-btn perm" title="영구 제외 (저장)" onclick="addPermExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">영구✕</button>'+
     '</div>';
   }).join('');
   document.getElementById('dash-kw').innerHTML=kwHtml||'<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">분석할 텍스트가 없어요</div>';
@@ -839,7 +860,7 @@ function renderDash(){
     '<circle class="donut-arc" cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="#ffb347" stroke-width="'+sw+'"'+
     ' stroke-dasharray="'+dsArc+' '+(circ-dsArc)+'" stroke-dashoffset="'+(circ/4-shArc)+'"'+
     ' transform="rotate(-90 '+cx+' '+cy+')" stroke-linecap="butt"'+
-    ' data-name="동성이" data-val="'+ds+'" data-pct="'+dsPct+'"/>';
+    ' data-name="동성" data-val="'+ds+'" data-pct="'+dsPct+'"/>';
   // 중앙 기본 텍스트
   var tipVal=document.getElementById('dash-donut-tip-val');
   var tipLbl=document.getElementById('dash-donut-tip-lbl');
@@ -932,7 +953,7 @@ function renderDash(){
   // 월별 바 차트 터치/호버 툴팁
   document.getElementById('dash-monthly').querySelectorAll('.mbc').forEach(function(bar){
     function showBarTip(x,y){
-      tip.innerHTML='<b>'+bar.dataset.mo+'</b>&nbsp; 승협 '+bar.dataset.sh+'건 · 동성이 '+bar.dataset.ds+'건';
+      tip.innerHTML='<b>'+bar.dataset.mo+'</b>&nbsp; 승협 '+bar.dataset.sh+'건 · 동성 '+bar.dataset.ds+'건';
       tip.style.display='block';
       var tw=tip.offsetWidth,th=tip.offsetHeight;
       var lx=Math.min(Math.max(x-Math.round(tw/2),8),window.innerWidth-tw-8);
@@ -947,7 +968,7 @@ function renderDash(){
   var recent=msgs.slice(-5).reverse();
   var feedHtml=recent.map(function(m){
     var isSh=m['멤버']==='승협';
-    var name=isSh?'승협':'동성이';
+    var name=isSh?'승협':'동성';
     var color=isSh?'#6eb5ff':'#ffb347';
     var init=isSh?'승':'동';
     var text=m['종류']==='텍스트'?(m['내용']||'').slice(0,40):'['+m['종류']+']';
