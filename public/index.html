@@ -763,10 +763,7 @@ function renderKwExcludedChips(){
       '<button onclick="sessionExcludeWords.delete(\''+ew+'\');renderKwExcludedChips();renderKeywords();" title="제외 해제">✕</button>'+
     '</span>';
   }).join('');
-  var permHtml=Array.from(customExcludeWords).map(function(w){
-    return '<span class="kw-excl-chip" title="영구 제외">'+esc(w)+'<button onclick="removeKwExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">✕</button></span>';
-  }).join('');
-  el.innerHTML=sessHtml+permHtml;
+  el.innerHTML=sessHtml;
 }
 function renderKeywords(){
   if(!allMsgs.length)return;
@@ -798,8 +795,6 @@ function renderKeywords(){
       '<div class="kw-word">'+esc(w)+'</div>'+
       '<div class="kw-bar-wrap"><div class="kw-bar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+
       '<div class="kw-num">'+cnt+'</div>'+
-      '<button class="kw-exclude-btn" title="이번만 숨김" onclick="addSessionExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">숨김</button>'+
-      '<button class="kw-exclude-btn perm" title="영구 제외 (저장)" onclick="addPermExclude(\''+esc(w).replace(/'/g,"\\'")+'\')">영구✕</button>'+
     '</div>';
   }).join('');
   document.getElementById('dash-kw').innerHTML=kwHtml||'<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">분석할 텍스트가 없어요</div>';
